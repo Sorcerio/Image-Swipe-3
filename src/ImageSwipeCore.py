@@ -12,7 +12,7 @@ from .PercentageLayout import PercentageLayout
 from .TextureManager import TextureManager
 
 # Classes
-class ImageSwipe:
+class ImageSwipeCore:
     """
     Core interface runner for Image Swipe 3.
     """
