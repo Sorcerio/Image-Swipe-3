@@ -20,6 +20,10 @@ class ImageSwipe:
     _PATH_ICON_LARGE = fullpath(os.path.join(ASSETS_DIR, "icon_128.ico"))
 
     _TAG_WINDOW_MAIN = "mainWindow"
+    _TAG_WINDOW_IMAGE = "imageDisplay"
+    _TAG_GROUP_IMAGES = "imageDisplayGroup"
+    _TAG_PRIMARY_IMAGE = "primaryImage"
+    _TAG_GROUP_CONTROLS = "controlsGroup"
 
     # Constructor
     def __init__(self, debug: bool = False):
@@ -97,6 +101,8 @@ class ImageSwipe:
                     dpg.add_menu_item(label="Item Registry", callback=(lambda : dpg.show_tool(dpg.mvTool_ItemRegistry)))
                     dpg.add_menu_item(label="Style Editor", callback=(lambda : dpg.show_tool(dpg.mvTool_Style)))
                     dpg.add_menu_item(label="Texture Registry", callback=(lambda : self._textures.showTextureRegistry()))
+                    dpg.add_separator()
+                    dpg.add_menu_item(label="Display Error Image", callback=(lambda : self._presentImage(self._textures._TAG_IMAGE_ERROR)))
 
     def __toolbarQuitCallback(self, sender: Union[int, str]):
         """
@@ -118,7 +124,7 @@ class ImageSwipe:
         Builds the main window.
         """
         # Define sizing
-        sTopSpacer = 10
+        sTopSpacer = 15
         sButtonH = 64
         sSpacer = 8
 
@@ -128,10 +134,17 @@ class ImageSwipe:
             dpg.add_spacer(height=sTopSpacer)
 
             # Add the image display
-            dpg.add_image(self._textures._TAG_IMAGE_ERROR) # TODO: dynamic!
+            with dpg.child_window(
+                width=-1,
+                height=-(sButtonH + sSpacer),
+                tag=self._TAG_WINDOW_IMAGE,
+                no_scrollbar=True,
+                no_scroll_with_mouse=True
+            ):
+                dpg.add_group(tag=self._TAG_GROUP_IMAGES)
 
             # Add the buttons
-            with dpg.group(horizontal=True): # TODO: Allow button configuration
+            with dpg.group(horizontal=True, tag=self._TAG_GROUP_CONTROLS): # TODO: Allow button configuration
                 # Prepare percentage layout
                 layout = PercentageLayout()
 
@@ -145,6 +158,45 @@ class ImageSwipe:
 
         # Flag as presented
         self._primaryWindowsPresented = True
+
+    def _presentImage(self, tag: Union[int, str]): # TODO: if viewport is resized, run this again with current images
+        """
+        Presents the image with the given tag.
+
+        tag: The tag of the image to present.
+        """
+        # Check if dearpygui is running
+        if not dpg.is_dearpygui_running():
+            print(f"Cannot present the image \"{tag}\" while the interface is not running.")
+            return
+
+        # TODO: Clear the last image
+
+        # Add the image
+        layout = PercentageLayout(parent=self._TAG_GROUP_IMAGES)
+        layout.addItem(dpg.add_child_window(border=False), 50)
+        layout.addItem(dpg.add_child_window(border=False), 50) # TODO: Only add if there are more images
+        contentTags = layout.apply()
+
+        # Wait for windows to size
+        dpg.split_frame()
+
+        # Add sized images
+        padding = 10
+        for parent in contentTags:
+            # Get the parent size
+            parentSize = dpg.get_item_rect_size(parent)
+            parentSize = (
+                parentSize[0] - padding,
+                parentSize[1] - padding
+            )
+
+            # Calculate best fit size
+            fitSize, pasteOffset = TextureManager.calcBestFitSize(self._textures._sizes[tag], parentSize, True)
+            leftPad = (parentSize[0] - fitSize[0]) // 2
+
+            # Add the image
+            dpg.add_image(self._textures._TAG_IMAGE_ERROR, parent=parent, width=fitSize[0], height=fitSize[1], indent=leftPad) # TODO: Use appropriate tags
 
 # Command Line
 if __name__ == "__main__":
