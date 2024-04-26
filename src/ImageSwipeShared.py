@@ -6,6 +6,9 @@ import os
 import dearpygui.dearpygui as dpg
 from typing import Union, Optional, Callable, Any
 
+# Constants
+ASSETS_DIR = os.path.join(os.path.dirname(__file__), "assets")
+
 # Functions
 def fullpath(path: str) -> str:
     """
