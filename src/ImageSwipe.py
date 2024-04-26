@@ -3,11 +3,12 @@
 
 # Imports
 import os
-from typing import Union
+from typing import Union, Optional
 import dearpygui.dearpygui as dpg
 
 from .ImageSwipeShared import ASSETS_DIR, fullpath, createConfirmationModal
 from .PercentageLayout import PercentageLayout
+from .TextureManager import TextureManager
 
 # Classes
 class ImageSwipe:
@@ -17,10 +18,8 @@ class ImageSwipe:
     # Constants
     _PATH_ICON_SMALL = fullpath(os.path.join(ASSETS_DIR, "icon_32.ico"))
     _PATH_ICON_LARGE = fullpath(os.path.join(ASSETS_DIR, "icon_128.ico"))
-    _PATH_IMAGE_ERROR = fullpath(os.path.join(ASSETS_DIR, "error.png"))
 
     _TAG_WINDOW_MAIN = "mainWindow"
-    _TAG_IMAGE_ERROR = "errorImage"
 
     # Constructor
     def __init__(self, debug: bool = False):
@@ -31,16 +30,15 @@ class ImageSwipe:
         self.debug = debug
         self._primaryWindowsPresented = False
 
+        # Prepare sub objects
+        self._textures: Optional[TextureManager] = None
+
         # Image check
         if not os.path.exists(self._PATH_ICON_SMALL):
             print(f"No small icon file at: {self._PATH_ICON_SMALL}")
 
         if not os.path.exists(self._PATH_ICON_LARGE):
             print(f"No large icon file at: {self._PATH_ICON_LARGE}")
-
-        if not os.path.exists(self._PATH_IMAGE_ERROR):
-            # Won't work without this
-            raise FileNotFoundError(f"No error image file at: {self._PATH_IMAGE_ERROR}")
 
     # Functions
     def display(self):
@@ -56,11 +54,11 @@ class ImageSwipe:
         )
         dpg.setup_dearpygui()
 
+        # Setup the texture manager
+        self._textures = TextureManager()
+
         # Add main toolbar
         self._buildToolbar()
-
-        # Register the error image
-        self._registerImage(self._PATH_IMAGE_ERROR, self._TAG_IMAGE_ERROR)
 
         # Build main window
         self._buildMainWindow()
@@ -98,7 +96,7 @@ class ImageSwipe:
                     dpg.add_menu_item(label="Performance Metrics", callback=(lambda : dpg.show_tool(dpg.mvTool_Metrics)))
                     dpg.add_menu_item(label="Item Registry", callback=(lambda : dpg.show_tool(dpg.mvTool_ItemRegistry)))
                     dpg.add_menu_item(label="Style Editor", callback=(lambda : dpg.show_tool(dpg.mvTool_Style)))
-                    # dpg.add_menu_item(label="Texture Registry", callback=(lambda : dpg.texture_registry(show=True))) # TODO: Figure this out
+                    dpg.add_menu_item(label="Texture Registry", callback=(lambda : self._textures.showTextureRegistry()))
 
     def __toolbarQuitCallback(self, sender: Union[int, str]):
         """
@@ -130,7 +128,7 @@ class ImageSwipe:
             dpg.add_spacer(height=sTopSpacer)
 
             # Add the image display
-            dpg.add_image(self._TAG_IMAGE_ERROR) # TODO: dynamic!
+            dpg.add_image(self._textures._TAG_IMAGE_ERROR) # TODO: dynamic!
 
             # Add the buttons
             with dpg.group(horizontal=True): # TODO: Allow button configuration
@@ -147,31 +145,6 @@ class ImageSwipe:
 
         # Flag as presented
         self._primaryWindowsPresented = True
-
-    def _registerImage(self, path: str, tag: Union[int, str]):
-        """
-        Registers the given image with the texture register as a static texture.
-
-        path: The path to the image.
-        tag: The tag that will be used to reference the image later.
-        """
-        # Check if the image exists
-        if not os.path.exists(path):
-            # Show the error image
-            self._registerImage(self._PATH_IMAGE_ERROR, tag)
-
-            # Show an error
-            print(f"Image not found at: {path}")
-
-            # Return
-            return
-
-        # Load the image
-        width, height, channels, data = dpg.load_image(path)
-
-        # Add to the texture registry
-        with dpg.texture_registry():
-            dpg.add_static_texture(width, height, data, tag=tag)
 
 # Command Line
 if __name__ == "__main__":
