@@ -4,6 +4,7 @@
 # Imports
 import os
 from typing import Union, Optional
+from random import choice
 import dearpygui.dearpygui as dpg
 
 from .ImageSwipeShared import ASSETS_DIR, fullpath, createConfirmationModal
@@ -102,7 +103,7 @@ class ImageSwipe:
                     dpg.add_menu_item(label="Style Editor", callback=(lambda : dpg.show_tool(dpg.mvTool_Style)))
                     dpg.add_menu_item(label="Texture Registry", callback=(lambda : self._textures.showTextureRegistry()))
                     dpg.add_separator()
-                    dpg.add_menu_item(label="Display Error Image", callback=(lambda : self._presentImage(self._textures._TAG_IMAGE_ERROR)))
+                    dpg.add_menu_item(label="Display Random Image", callback=(lambda : self._presentImage(choice(self._textures._textures))))
 
     def __toolbarQuitCallback(self, sender: Union[int, str]):
         """
@@ -141,6 +142,7 @@ class ImageSwipe:
                 no_scrollbar=True,
                 no_scroll_with_mouse=True
             ):
+                # Add the image display group
                 dpg.add_group(tag=self._TAG_GROUP_IMAGES)
 
             # Add the buttons
@@ -159,23 +161,35 @@ class ImageSwipe:
         # Flag as presented
         self._primaryWindowsPresented = True
 
-    def _presentImage(self, tag: Union[int, str]): # TODO: if viewport is resized, run this again with current images
+    # TODO: if viewport is resized, run this again with current images
+    def _presentImage(self, tags: Union[list[Union[int, str]], tuple[Union[int, str], ...], Union[int, str]]):
         """
         Presents the image with the given tag.
 
-        tag: The tag of the image to present.
+        tag: The tag, or a iterable of tags, of the textures to present.
         """
         # Check if dearpygui is running
         if not dpg.is_dearpygui_running():
-            print(f"Cannot present the image \"{tag}\" while the interface is not running.")
+            print(f"Cannot present the following textures while the interface is not running: {', '.join(tags)}")
             return
 
-        # TODO: Clear the last image
+        # Check if the tag is a single tag
+        if not isinstance(tags, (list, tuple)):
+            tags = (tags, )
 
-        # Add the image
+        # Reset the image group
+        dpg.delete_item(self._TAG_GROUP_IMAGES)
+        dpg.add_group(tag=self._TAG_GROUP_IMAGES, parent=self._TAG_WINDOW_IMAGE)
+
+        # Prepare the layout
         layout = PercentageLayout(parent=self._TAG_GROUP_IMAGES)
-        layout.addItem(dpg.add_child_window(border=False), 50)
-        layout.addItem(dpg.add_child_window(border=False), 50) # TODO: Only add if there are more images
+
+        # Add the image containers
+        segmentSize = (100 // len(tags))
+        for tag in tags:
+            layout.addItem(dpg.add_child_window(border=False), segmentSize)
+
+        # Apply the layout
         contentTags = layout.apply()
 
         # Wait for windows to size
@@ -183,7 +197,7 @@ class ImageSwipe:
 
         # Add sized images
         padding = 10
-        for parent in contentTags:
+        for parent, tag in zip(contentTags, tags):
             # Get the parent size
             parentSize = dpg.get_item_rect_size(parent)
             parentSize = (
@@ -196,7 +210,7 @@ class ImageSwipe:
             leftPad = (parentSize[0] - fitSize[0]) // 2
 
             # Add the image
-            dpg.add_image(self._textures._TAG_IMAGE_ERROR, parent=parent, width=fitSize[0], height=fitSize[1], indent=leftPad) # TODO: Use appropriate tags
+            dpg.add_image(tag, parent=parent, width=fitSize[0], height=fitSize[1], indent=leftPad)
 
 # Command Line
 if __name__ == "__main__":
