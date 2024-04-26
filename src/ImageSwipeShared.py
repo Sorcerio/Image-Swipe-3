@@ -9,6 +9,7 @@ from typing import Union, Optional, Callable, Any
 
 # Constants
 ASSETS_DIR = os.path.join(os.path.dirname(__file__), "assets")
+VALID_IMAGE_EXTS = [".jpg", ".jpeg", ".png", ".bmp", ".psd", ".gif", ".hdr", ".pic", ".ppm", ".pgm"] # Extensions from DearPyGui docs
 
 # Functions
 def fullpath(path: str) -> str:

@@ -3,7 +3,7 @@
 
 # Imports
 import os
-from typing import Union, Optional
+from typing import Union, Optional, Iterable, Callable
 from random import choice
 import dearpygui.dearpygui as dpg
 
@@ -29,13 +29,22 @@ class ImageSwipeCore:
     _TAG_GROUP_CONTROLS = "controlsGroup"
 
     # Constructor
-    def __init__(self, buttons: Optional[list[ActionButtonModel]] = None, debug: bool = False):
+    def __init__(self,
+        outputDir: str,
+        buttons: Optional[list[ActionButtonModel]] = None,
+        preloadBuffer: int = 3,
+        debug: bool = False
+    ):
         """
+        outputDir: The directory to place output directories in.
         buttons: The buttons to display on the interface.
+        preloadBuffer: The number of images to preload following the current image.
         debug: If `True`, debug features will be enabled.
         """
         # Assign data
         self.debug = debug
+        self.outputDir = fullpath(outputDir)
+        self.preloadBuffer = preloadBuffer
 
         if buttons is None:
             # Prepare default buttons
@@ -48,8 +57,11 @@ class ImageSwipeCore:
             # Use provided buttons
             self._buttons = buttons
 
-        self.textures: list[TextureModel] = []
+        self.__curImageIndex = 0
+        self._images: list[TextureModel] = []
+
         self._primaryWindowsPresented = False
+        self.__onFirstFrameTriggered = False
 
         # Prepare sub objects
         self._textureManager: Optional[TextureManager] = None
@@ -62,9 +74,11 @@ class ImageSwipeCore:
             print(f"No large icon file at: {self._PATH_ICON_LARGE}")
 
     # Functions
-    def display(self):
+    def display(self, onFirstFrame: Optional[Callable[[None], None]] = None):
         """
         Displays the Image Swipe GUI.
+
+        onFirstFrame: A function to call on the first frame after displaying the interface.
         """
         # Prepare the interface context
         dpg.create_context()
@@ -95,9 +109,18 @@ class ImageSwipeCore:
 
         # Start the interface with a render loop
         while dpg.is_dearpygui_running():
+            # Check if the first frame has been triggered
+            if not self.__onFirstFrameTriggered:
+                # Trigger the first frame
+                if onFirstFrame is not None:
+                    onFirstFrame()
+
+                # Flag as triggered
+                self.__onFirstFrameTriggered = True
+
             # Check if the primary windows are presented
             if self._primaryWindowsPresented:
-                pass
+                self.__setImages()
 
             # Render the frame
             dpg.render_dearpygui_frame()
@@ -105,55 +128,36 @@ class ImageSwipeCore:
         # Cleanup the interface context
         dpg.destroy_context()
 
-    def presentImage(self, tags: Union[list[Union[int, str]], tuple[Union[int, str], ...], Union[int, str]]):
+    def addImageToQueue(self, image: TextureModel):
         """
-        Presents the image with the given tag.
+        Adds an image to the queue for presentation.
 
-        tag: The tag, or a iterable of tags, of the textures to present.
+        image: A `TextureModel` object to add to the queue.
         """
-        # Check if dearpygui is running
-        if not dpg.is_dearpygui_running():
-            print(f"Cannot present the following textures while the interface is not running: {', '.join(tags)}")
-            return
+        # Add to list
+        self._images.append(image)
 
-        # Check if the tag is a single tag
-        if not isinstance(tags, (list, tuple)):
-            tags = (tags, )
+    def addImagesToQueue(self, images: Iterable[TextureModel]):
+        """
+        Adds a list of images to the queue for presentation.
 
-        # Reset the image group
-        dpg.delete_item(self._TAG_GROUP_IMAGES)
-        dpg.add_group(tag=self._TAG_GROUP_IMAGES, parent=self._TAG_WINDOW_IMAGE)
+        images: An iterable of `TextureModel` objects to add to the queue.
+        """
+        # Add to list
+        self._images.extend(images)
 
-        # Prepare the layout
-        layout = PercentageLayout(parent=self._TAG_GROUP_IMAGES)
+    def startQueue(self):
+        """
+        Presents the first image in the queue.
+        """
+        # Set to the first image
+        self.__curImageIndex = 0
 
-        # Add the image containers
-        segmentSize = (100 // len(tags))
-        for tag in tags:
-            layout.addItem(dpg.add_child_window(border=False), segmentSize)
+        # Update the texture cache
+        self._updateTextureCache()
 
-        # Apply the layout
-        contentTags = layout.apply()
-
-        # Wait for windows to size
-        dpg.split_frame()
-
-        # Add sized images
-        padding = 10
-        for parent, tag in zip(contentTags, tags):
-            # Get the parent size
-            parentSize = dpg.get_item_rect_size(parent)
-            parentSize = (
-                parentSize[0] - padding,
-                parentSize[1] - padding
-            )
-
-            # Calculate best fit size
-            fitSize, pasteOffset = TextureManager.calcBestFitSize(self._textureManager._sizes[tag], parentSize, True)
-            leftPad = (parentSize[0] - fitSize[0]) // 2
-
-            # Add the image
-            dpg.add_image(tag, parent=parent, width=fitSize[0], height=fitSize[1], indent=leftPad)
+        # Present the image
+        self._presentImage(self._images[self.__curImageIndex].tag)
 
     # UI Functions
     def _buildToolbar(self):
@@ -172,7 +176,7 @@ class ImageSwipeCore:
                     dpg.add_menu_item(label="Style Editor", callback=(lambda : dpg.show_tool(dpg.mvTool_Style)))
                     dpg.add_menu_item(label="Texture Registry", callback=(lambda : self._textureManager.showTextureRegistry()))
                     dpg.add_separator()
-                    dpg.add_menu_item(label="Display Random Image", callback=(lambda : self.presentImage(choice(self._textureManager._textures))))
+                    dpg.add_menu_item(label="Display Random Image", callback=(lambda : self._presentImage(choice(self._textureManager._textures))))
 
     def __toolbarQuitCallback(self, sender: Union[int, str]):
         """
@@ -229,6 +233,96 @@ class ImageSwipeCore:
 
         # Flag as presented
         self._primaryWindowsPresented = True
+
+    def _updateTextureCache(self):
+        """
+        Updates the texture cache with the most relevant images based on current index.
+        """
+        # Check if the texture manager is ready
+        if self._textureManager is None:
+            raise ValueError("Texture Manager is not ready for input.")
+
+        # Load the image before current
+        if (self.__curImageIndex > 0):
+            self._loadImageToCache(self._images[self.__curImageIndex - 1])
+
+        # Load the current image
+        self._loadImageToCache(self._images[self.__curImageIndex])
+
+        # Load images after current for buffer length
+        for i in range(1, self.preloadBuffer + 1):
+            if (self.__curImageIndex + i < len(self._images)):
+                self._loadImageToCache(self._images[self.__curImageIndex + i])
+
+    def _loadImageToCache(self, image: TextureModel):
+        """
+        Loads the given image to the texture cache.
+
+        image: The `TextureModel` object to load into the cache.
+        """
+        # Check if the texture manager is ready
+        if self._textureManager is None:
+            raise ValueError("Texture Manager is not ready for input.")
+
+        # Check if the image is not in the cache
+        if (image.tag not in self._textureManager._textures):
+            # Load the image
+            self._textureManager.registerTexture(image.filepath, image.tag, image.label)
+
+    def _presentImage(self, tags: Union[list[Union[int, str]], tuple[Union[int, str], ...], Union[int, str]]):
+        """
+        Presents the image with the given tag.
+
+        tag: The tag, or a iterable of tags, of the textures to present.
+        """
+        # Check if dearpygui is running
+        if not dpg.is_dearpygui_running():
+            print(f"Cannot present the following textures while the interface is not running: {', '.join(tags)}")
+            return
+
+        # Check if the tag is a single tag
+        if not isinstance(tags, (list, tuple)):
+            tags = (tags, )
+
+        # Reset the image group
+        dpg.delete_item(self._TAG_GROUP_IMAGES)
+        dpg.add_group(tag=self._TAG_GROUP_IMAGES, parent=self._TAG_WINDOW_IMAGE)
+
+        # Prepare the layout
+        layout = PercentageLayout(parent=self._TAG_GROUP_IMAGES)
+
+        # Add the image containers
+        segmentSize = (100 // len(tags))
+        for tag in tags:
+            layout.addItem(dpg.add_child_window(border=False), segmentSize)
+
+        # Apply the layout
+        contentTags = layout.apply()
+
+        self.__imagesToSet = tuple(zip(contentTags, tags))
+
+        # Wait for windows to size
+        dpg.split_frame()
+
+        # Add sized images
+        padding = 10
+        # for parent, tag in zip(contentTags, tags):
+        for parent, tag in self.__imagesToSet:
+            # Get the parent size
+            parentSize = dpg.get_item_rect_size(parent)
+            parentSize = (
+                parentSize[0] - padding,
+                parentSize[1] - padding
+            )
+
+            # Calculate best fit size
+            fitSize, pasteOffset = TextureManager.calcBestFitSize(self._textureManager._sizes[tag], parentSize, True)
+            leftPad = (parentSize[0] - fitSize[0]) // 2
+
+            # Add the image
+            dpg.add_image(tag, parent=parent, width=fitSize[0], height=fitSize[1], indent=leftPad)
+
+        self.__imagesToSet = None
 
     # Callbacks
     def __viewportResizedCallback(self, sender: Union[int, str], size: tuple[int, int, int, int]):

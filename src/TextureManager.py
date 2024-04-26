@@ -67,8 +67,13 @@ class TextureManager:
         width, height, channels, data = dpg.load_image(path)
 
         # Add to the texture registry
-        with dpg.texture_registry(label="Texture Registry", tag=self._TAG_TEXTURE_REGISTRY):
-            dpg.add_static_texture(width, height, data, tag=tag, label=(label or tag))
+        if not dpg.does_item_exist(self._TAG_TEXTURE_REGISTRY):
+            # First time
+            with dpg.texture_registry(label="Texture Registry", tag=self._TAG_TEXTURE_REGISTRY):
+                dpg.add_static_texture(width, height, data, tag=tag, label=(label or tag))
+        else:
+            # Subsequent times
+            dpg.add_static_texture(width, height, data, tag=tag, label=(label or tag), parent=self._TAG_TEXTURE_REGISTRY)
 
         # Record texture info
         self._textures.append(tag)

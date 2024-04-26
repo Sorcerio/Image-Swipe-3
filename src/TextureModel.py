@@ -12,11 +12,12 @@ class TextureModel:
     # Constructor
     def __init__(self, filepath: str, tag: Union[int, str], label: Optional[str] = None):
         """
+        filepath: The path to the image to use for the texture.
         tag: The tag associated with the texture.
         """
         self.filepath = filepath
-        self.tag = tag
-        self.label = (label or tag)
+        self.tag = f"{tag}_tex"
+        self.label = (label or self.tag)
 
 # Command Line
 if __name__ == "__main__":
