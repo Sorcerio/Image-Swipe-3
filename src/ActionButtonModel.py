@@ -13,13 +13,12 @@ class ActionButtonModel:
     # Constants
     ACTION_REJECT = "reject"
     ACTION_ACCEPT = "accept"
-    ACTION_HIGHLIGHT = "highlight"
-    ACTION_NOTHING = "nothing"
+    ACTION_CUSTOM = "custom"
 
     # Constructor
     def __init__(self, label: str, action: str, callback: Optional[Callable[[None], None]] = None):
         """
-        tag: The tag associated with the texture.
+        label: The text displayed on the button and is used to determine output directory name.
         action: The default action to perform when the button is clicked.
         callback: The function to call when the button is clicked. This is run in addition to the button's default behavior.
         """
@@ -35,7 +34,7 @@ class RejectButtonModel(ActionButtonModel):
     # Constructor
     def __init__(self, label: str = "Discard", callback: Optional[Callable[[None], None]] = None):
         """
-        tag: The tag associated with the texture.
+        label: The text displayed on the button and is used to determine output directory name.
         callback: The function to call when the button is clicked. This is run in addition to the button's default behavior.
         """
         super().__init__(label, ActionButtonModel.ACTION_REJECT, callback=callback)
@@ -47,7 +46,7 @@ class AcceptButtonModel(ActionButtonModel):
     # Constructor
     def __init__(self, label: str = "Keep", callback: Optional[Callable[[None], None]] = None):
         """
-        tag: The tag associated with the texture.
+        label: The text displayed on the button and is used to determine output directory name.
         callback: The function to call when the button is clicked. This is run in addition to the button's default behavior.
         """
         super().__init__(label, ActionButtonModel.ACTION_ACCEPT, callback=callback)
@@ -57,12 +56,24 @@ class HighlightButtonModel(ActionButtonModel):
     Data object for defining a Highlight action button.
     """
     # Constructor
-    def __init__(self, label: str = "Highlight", callback: Optional[Callable[[None], None]] = None):
+    def __init__(self, label: str = "Favorite", callback: Optional[Callable[[None], None]] = None):
         """
-        tag: The tag associated with the texture.
+        label: The text displayed on the button and is used to determine output directory name.
         callback: The function to call when the button is clicked. This is run in addition to the button's default behavior.
         """
-        super().__init__(label, ActionButtonModel.ACTION_HIGHLIGHT, callback=callback)
+        super().__init__(label, ActionButtonModel.ACTION_ACCEPT, callback=callback)
+
+class CustomButtonModel(ActionButtonModel):
+    """
+    Data object for defining a Custom action button.
+    """
+    # Constructor
+    def __init__(self, label: str, callback: Optional[Callable[[None], None]]):
+        """
+        label: The text displayed on the button and is used to determine output directory name.
+        callback: The function to call when the button is clicked. This is run in addition to the button's default behavior.
+        """
+        super().__init__(label, ActionButtonModel.ACTION_CUSTOM, callback=callback)
 
 # Command Line
 if __name__ == "__main__":

@@ -3,7 +3,8 @@
 
 # Imports
 import os
-from typing import Union, Optional, Iterable, Callable
+import shutil
+from typing import Union, Optional, Iterable, Callable, Any
 from random import choice
 import dearpygui.dearpygui as dpg
 
@@ -217,7 +218,12 @@ class ImageSwipeCore:
                 # Add the buttons
                 btnPerc = (100 // len(self._buttons))
                 for btn in self._buttons:
-                    layout.addItem(dpg.add_button(label=btn.label, height=sButtonH), btnPerc)
+                    layout.addItem(dpg.add_button(
+                        label=btn.label,
+                        height=sButtonH,
+                        user_data=btn,
+                        callback=self.__controlButtonCallback
+                    ), btnPerc)
 
                 # Apply the layout
                 layout.apply()
@@ -349,6 +355,44 @@ class ImageSwipeCore:
 
         self.__imagesToSet = None
 
+    def _showNextImage(self):
+        """
+        Shows the next image in the queue.
+        """
+        # Check that there is a next image
+        if (self.__curImageIndex + 1 > len(self._images)):
+            # No next image
+            # TODO: Show a message or something?
+            return
+
+        # Increment the index
+        self.__curImageIndex += 1
+
+        # Update the texture cache
+        self._updateTextureCache()
+
+        # Present the image
+        self._presentImage(self._images[self.__curImageIndex].tag)
+
+        # Update the queue window
+        self._updateQueueWindow()
+
+    def _saveCurrentImage(self, toPath: str):
+        """
+        Saves the current image to the given directory.
+
+        toPath: The path to save the image to.
+        """
+        # Check if debug
+        if self.debug:
+            print(f"Saving image at index {self.__curImageIndex} to: {toPath}")
+
+        # Make the output directory
+        os.makedirs(os.path.dirname(toPath), exist_ok=True)
+
+        # Copy the image to the output directory
+        shutil.copy2(self._images[self.__curImageIndex].filepath, toPath)
+
     # Callbacks
     def __viewportResizedCallback(self, sender: Union[int, str], size: tuple[int, int, int, int]):
         """
@@ -385,6 +429,31 @@ class ImageSwipeCore:
 
         # Show the queue window
         dpg.show_item(self._TAG_WINDOW_QUEUE)
+
+    def __controlButtonCallback(self, sender: Union[int, str], v: Any, btn: ActionButtonModel):
+        """
+        Callback for when a control button is pressed.
+
+        sender: The tag of the sender.
+        v: The value of the sender.
+        btn: The `ActionButtonModel` object associated with the button.
+        """
+        # Decide on the button type
+        if btn.action == ActionButtonModel.ACTION_REJECT:
+            # Reject button
+            self._showNextImage()
+        elif btn.action == ActionButtonModel.ACTION_ACCEPT:
+            # Accept button
+            self._saveCurrentImage(os.path.join(
+                self.outputDir,
+                btn.dirName,
+                os.path.basename(self._images[self.__curImageIndex].filepath)
+            ))
+            self._showNextImage()
+
+        # Trigger the button action
+        if btn.callback is not None:
+            btn.callback()
 
 # Command Line
 if __name__ == "__main__":

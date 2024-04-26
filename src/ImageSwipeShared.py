@@ -161,7 +161,7 @@ def loadImagesFromDir(d: str, debug: bool = False) -> list[TextureModel]:
 
             # Check if in the whitelist
             if fileExt.lower() in VALID_IMAGE_EXTS:
-                images.append(TextureModel(filePath, fileName))
+                images.append(TextureModel(filePath, fileName, label=fileName))
 
     # Debug print
     if debug:
