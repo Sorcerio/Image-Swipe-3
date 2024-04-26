@@ -24,9 +24,11 @@ class ImageSwipeCore:
 
     _TAG_WINDOW_MAIN = "mainWindow"
     _TAG_WINDOW_IMAGE = "imageDisplay"
+    _TAG_WINDOW_QUEUE = "queueWindow"
     _TAG_GROUP_IMAGES = "imageDisplayGroup"
     _TAG_PRIMARY_IMAGE = "primaryImage"
     _TAG_GROUP_CONTROLS = "controlsGroup"
+    _TAG_GROUP_QUEUE_CONTENT = "queueContent"
 
     # Constructor
     def __init__(self,
@@ -98,8 +100,9 @@ class ImageSwipeCore:
         # Add main toolbar
         self._buildToolbar()
 
-        # Build main window
+        # Build core windows
         self._buildMainWindow()
+        self._buildQueueWindow()
 
         # Show the interface
         dpg.show_viewport()
@@ -169,6 +172,9 @@ class ImageSwipeCore:
             with dpg.menu(label="File"):
                 dpg.add_menu_item(label="Quit", callback=self.__toolbarQuitCallback)
 
+            with dpg.menu(label="View"):
+                dpg.add_menu_item(label="Queue", callback=self.__toolbarShowQueueCallback)
+
             if self.debug:
                 with dpg.menu(label="Debug"):
                     dpg.add_menu_item(label="Performance Metrics", callback=(lambda : dpg.show_tool(dpg.mvTool_Metrics)))
@@ -177,21 +183,6 @@ class ImageSwipeCore:
                     dpg.add_menu_item(label="Texture Registry", callback=(lambda : self._textureManager.showTextureRegistry()))
                     dpg.add_separator()
                     dpg.add_menu_item(label="Display Random Image", callback=(lambda : self._presentImage(choice(self._textureManager._textures))))
-
-    def __toolbarQuitCallback(self, sender: Union[int, str]):
-        """
-        Callback for when the user selects to quit from the toolbar.
-
-        sender: The tag of the sender.
-        """
-        # Confirm quit
-        createConfirmationModal(
-            "Quit",
-            "Are you sure you want to quit?",
-            confirmText="Quit",
-            cancelText="Go Back",
-            onConfirm=(lambda : dpg.stop_dearpygui())
-        )
 
     def _buildMainWindow(self):
         """
@@ -233,6 +224,40 @@ class ImageSwipeCore:
 
         # Flag as presented
         self._primaryWindowsPresented = True
+
+    def _buildQueueWindow(self):
+        """
+        Builds the queue display window.
+        """
+        # Add queue window
+        dpg.add_window(label="Image Queue", tag=self._TAG_WINDOW_QUEUE, show=False)
+
+        # Update the queue window
+        self._updateQueueWindow()
+
+    def _updateQueueWindow(self):
+        """
+        Updates the content of the queue window.
+        """
+        # Remove the old content group
+        dpg.delete_item(self._TAG_GROUP_QUEUE_CONTENT)
+
+        # Add the content group
+        with dpg.group(tag=self._TAG_GROUP_QUEUE_CONTENT, parent=self._TAG_WINDOW_QUEUE):
+            # Add the count text
+            dpg.add_text(f"Viewing Image: {self.__curImageIndex + 1} of {len(self._images)}")
+
+            # Add the queue display
+            with dpg.child_window():
+                # Loop through the queue
+                for i, image in enumerate(self._images): # TODO: Add to table with more info and skip-to button
+                    # Check if current
+                    if (i == self.__curImageIndex):
+                        # Show text with current
+                        dpg.add_text(f"(CURRENT) {i + 1}: {image.label}", bullet=True)
+                    else:
+                        # Show text
+                        dpg.add_text(f"{i + 1}: {image.label}", bullet=True)
 
     def _updateTextureCache(self):
         """
@@ -333,6 +358,33 @@ class ImageSwipeCore:
         size: The new size of the viewport as a tuple like `(width, height, client width, client height)`.
         """
         # TODO: if viewport is resized, present the current images again so they fit
+
+    def __toolbarQuitCallback(self, sender: Union[int, str]):
+        """
+        Callback for when the user selects to quit from the toolbar.
+
+        sender: The tag of the sender.
+        """
+        # Confirm quit
+        createConfirmationModal(
+            "Quit",
+            "Are you sure you want to quit?",
+            confirmText="Quit",
+            cancelText="Go Back",
+            onConfirm=(lambda : dpg.stop_dearpygui())
+        )
+
+    def __toolbarShowQueueCallback(self, sender: Union[int, str]):
+        """
+        Callback for when the user selects to show the queue from the toolbar.
+
+        sender: The tag of the sender.
+        """
+        # Update the queue window
+        self._updateQueueWindow()
+
+        # Show the queue window
+        dpg.show_item(self._TAG_WINDOW_QUEUE)
 
 # Command Line
 if __name__ == "__main__":
