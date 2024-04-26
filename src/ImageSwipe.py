@@ -59,6 +59,9 @@ class ImageSwipe:
         )
         dpg.setup_dearpygui()
 
+        # Set the viewport resize callback
+        dpg.set_viewport_resize_callback(self.__viewportResizedCallback)
+
         # Setup the texture manager
         self._textures = TextureManager()
 
@@ -161,7 +164,6 @@ class ImageSwipe:
         # Flag as presented
         self._primaryWindowsPresented = True
 
-    # TODO: if viewport is resized, run this again with current images
     def _presentImage(self, tags: Union[list[Union[int, str]], tuple[Union[int, str], ...], Union[int, str]]):
         """
         Presents the image with the given tag.
@@ -211,6 +213,16 @@ class ImageSwipe:
 
             # Add the image
             dpg.add_image(tag, parent=parent, width=fitSize[0], height=fitSize[1], indent=leftPad)
+
+    # Callbacks
+    def __viewportResizedCallback(self, sender: Union[int, str], size: tuple[int, int, int, int]):
+        """
+        Callback for handling when the viewport is resized.
+
+        sender: The tag of the viewport.
+        size: The new size of the viewport as a tuple like `(width, height, client width, client height)`.
+        """
+        # TODO: if viewport is resized, present the current images again so they fit
 
 # Command Line
 if __name__ == "__main__":
