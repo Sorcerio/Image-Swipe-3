@@ -35,20 +35,20 @@ class ImageSwipeCore:
         debug: If `True`, debug features will be enabled.
         """
         # Assign data
+        self.debug = debug
+
         if buttons is None:
             # Prepare default buttons
-            self.buttons = [
+            self._buttons = [
                 RejectButtonModel(),
                 HighlightButtonModel(),
                 AcceptButtonModel()
             ]
         else:
             # Use provided buttons
-            self.buttons = buttons
+            self._buttons = buttons
 
-        self.debug = debug
         self.textures: list[TextureModel] = []
-
         self._primaryWindowsPresented = False
 
         # Prepare sub objects
@@ -220,8 +220,8 @@ class ImageSwipeCore:
                 layout = PercentageLayout()
 
                 # Add the buttons
-                btnPerc = (100 // len(self.buttons))
-                for btn in self.buttons:
+                btnPerc = (100 // len(self._buttons))
+                for btn in self._buttons:
                     layout.addItem(dpg.add_button(label=btn.label, height=sButtonH), btnPerc)
 
                 # Apply the layout

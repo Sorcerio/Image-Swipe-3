@@ -14,7 +14,7 @@ class SwipeLocal:
     def __init__(self, inputDir: str, outputDir: str, debug: bool = False):
         """
         inputDir: The directory to load images from.
-        outputDir: The directory to 
+        outputDir: The directory to place output directories and images in.
         debug: If `True`, debug features will be enabled.
         """
         # Prepare the core

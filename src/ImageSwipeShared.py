@@ -3,6 +3,7 @@
 
 # Imports
 import os
+import re
 import dearpygui.dearpygui as dpg
 from typing import Union, Optional, Callable, Any
 
@@ -118,6 +119,22 @@ def createConfirmationModal(
         confirmationContent,
         canClose=False
     )
+
+def sanitizeFileName(s: str) -> str:
+    """
+    Sanitizes a given string so that it can be used as a component in a file path like a directory or file name.
+
+    s: The string to sanitize.
+    """
+    # Remove invalid characters
+    s = re.sub('[\\\\/:*?"<>|]', "", s)
+    s = s.replace(" ", "_")
+
+    # Remove final dot
+    if s.endswith("."):
+        s = s[:-1]
+
+    return s
 
 # Command Line
 if __name__ == "__main__":
