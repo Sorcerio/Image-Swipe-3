@@ -17,6 +17,8 @@ class ImageSwipe:
     _ICON_SMALL = fullpath(os.path.join(os.path.dirname(__file__), "icons", "icon_32.ico"))
     _ICON_LARGE = fullpath(os.path.join(os.path.dirname(__file__), "icons", "icon_128.ico"))
 
+    _TAG_MAIN_WINDOW = "mainWindow"
+
     # Constructor
     def __init__(self, debug: bool = False):
         """
@@ -50,18 +52,20 @@ class ImageSwipe:
         # Add main toolbar
         self._buildToolbar()
 
-        # TODO: Build main window
+        # Build main window
+        self._buildMainWindow()
 
         # Show the interface
         dpg.show_viewport()
+
+        # Set the primary window
+        dpg.set_primary_window(self._TAG_MAIN_WINDOW, True)
 
         # Start the interface with a render loop
         while dpg.is_dearpygui_running():
             # Check if the primary windows are presented
             if self._primaryWindowsPresented:
-                # Update interface elements
-                self._player.update()
-                self._plotter.update()
+                pass
 
             # Render the frame
             dpg.render_dearpygui_frame()
@@ -75,7 +79,7 @@ class ImageSwipe:
         Builds the primary window toolbar.
         """
         # Add top menu bar
-        with dpg.viewport_menu_bar(parent="mainWindow"):
+        with dpg.viewport_menu_bar(parent=self._TAG_MAIN_WINDOW):
             with dpg.menu(label="File"):
                 dpg.add_menu_item(label="Quit", callback=self.__toolbarQuitCallback)
 
@@ -99,6 +103,21 @@ class ImageSwipe:
             cancelText="Go Back",
             onConfirm=(lambda : dpg.stop_dearpygui())
         )
+
+    def _buildMainWindow(self):
+        """
+        Builds the main window.
+        """
+        # Add main window
+        with dpg.window(tag=self._TAG_MAIN_WINDOW):
+            # Add toolbar spacer
+            dpg.add_spacer(height=10)
+
+            # TODO: Add the thing
+            dpg.add_text("TODO: the whole thing")
+
+        # Flag as presented
+        self._primaryWindowsPresented = True
 
 # Command Line
 if __name__ == "__main__":
