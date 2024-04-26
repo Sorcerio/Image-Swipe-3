@@ -7,6 +7,7 @@ from typing import Union
 import dearpygui.dearpygui as dpg
 
 from .ImageSwipeShared import fullpath, createConfirmationModal
+from .PercentageLayout import PercentageLayout
 
 # Classes
 class ImageSwipe:
@@ -108,13 +109,30 @@ class ImageSwipe:
         """
         Builds the main window.
         """
+        # Define sizing
+        sTopSpacer = 10
+        sButtonH = 64
+        sSpacer = 8
+
         # Add main window
         with dpg.window(tag=self._TAG_MAIN_WINDOW):
             # Add toolbar spacer
-            dpg.add_spacer(height=10)
+            dpg.add_spacer(height=sTopSpacer)
 
-            # TODO: Add the thing
-            dpg.add_text("TODO: the whole thing")
+            # TODO: add image
+
+            # Add the buttons
+            with dpg.group(horizontal=True): # TODO: Allow button configuration
+                # Prepare percentage layout
+                layout = PercentageLayout()
+
+                # Add the buttons
+                layout.addItem(dpg.add_button(label="Discard", height=sButtonH), 33)
+                layout.addItem(dpg.add_button(label="Favorite", height=sButtonH), 34)
+                layout.addItem(dpg.add_button(label="Save", height=sButtonH), 33)
+
+                # Apply the layout
+                layout.apply()
 
         # Flag as presented
         self._primaryWindowsPresented = True
