@@ -7,6 +7,8 @@ import re
 import dearpygui.dearpygui as dpg
 from typing import Union, Optional, Callable, Any
 
+from .TextureModel import TextureModel
+
 # Constants
 ASSETS_DIR = os.path.join(os.path.dirname(__file__), "assets")
 VALID_IMAGE_EXTS = [".jpg", ".jpeg", ".png", ".bmp", ".psd", ".gif", ".hdr", ".pic", ".ppm", ".pgm"] # Extensions from DearPyGui docs
@@ -136,6 +138,36 @@ def sanitizeFileName(s: str) -> str:
         s = s[:-1]
 
     return s
+
+def loadImagesFromDir(d: str, debug: bool = False) -> list[TextureModel]:
+    """
+    Loads images from the given directory.
+
+    d: A path to a directory to load images from.
+    debug: If `True`, debug information will be printed.
+
+    Returns a list of `TextureModel` objects.
+    """
+    # Loop through the target directory
+    images: list[TextureModel] = []
+    for f in os.listdir(d):
+        # Build the filepath
+        filePath = os.path.join(d, f)
+
+        # Check if a file
+        if os.path.isfile(filePath):
+            # Get the file details
+            fileName, fileExt = os.path.splitext(f)
+
+            # Check if in the whitelist
+            if fileExt.lower() in VALID_IMAGE_EXTS:
+                images.append(TextureModel(filePath, fileName))
+
+    # Debug print
+    if debug:
+        print(f"Added {len(images)} images to the queue from: {d}")
+
+    return images
 
 # Command Line
 if __name__ == "__main__":

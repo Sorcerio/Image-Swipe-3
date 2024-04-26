@@ -120,7 +120,7 @@ class ImageSwipeCore:
 
             # Check if the primary windows are presented
             if self._primaryWindowsPresented:
-                self.__setImages()
+                pass
 
             # Render the frame
             dpg.render_dearpygui_frame()
