@@ -10,6 +10,8 @@ import dearpygui.dearpygui as dpg
 from .ImageSwipeShared import ASSETS_DIR, fullpath, createConfirmationModal
 from .PercentageLayout import PercentageLayout
 from .TextureManager import TextureManager
+from .TextureModel import TextureModel
+from .ActionButtonModel import ActionButtonModel, RejectButtonModel, AcceptButtonModel, HighlightButtonModel
 
 # Classes
 class ImageSwipeCore:
@@ -27,16 +29,30 @@ class ImageSwipeCore:
     _TAG_GROUP_CONTROLS = "controlsGroup"
 
     # Constructor
-    def __init__(self, debug: bool = False):
+    def __init__(self, buttons: Optional[list[ActionButtonModel]] = None, debug: bool = False):
         """
+        buttons: The buttons to display on the interface.
         debug: If `True`, debug features will be enabled.
         """
         # Assign data
+        if buttons is None:
+            # Prepare default buttons
+            self.buttons = [
+                RejectButtonModel(),
+                HighlightButtonModel(),
+                AcceptButtonModel()
+            ]
+        else:
+            # Use provided buttons
+            self.buttons = buttons
+
         self.debug = debug
+        self.textures: list[TextureModel] = []
+
         self._primaryWindowsPresented = False
 
         # Prepare sub objects
-        self._textures: Optional[TextureManager] = None
+        self._textureManager: Optional[TextureManager] = None
 
         # Image check
         if not os.path.exists(self._PATH_ICON_SMALL):
@@ -63,7 +79,7 @@ class ImageSwipeCore:
         dpg.set_viewport_resize_callback(self.__viewportResizedCallback)
 
         # Setup the texture manager
-        self._textures = TextureManager()
+        self._textureManager = TextureManager()
 
         # Add main toolbar
         self._buildToolbar()
@@ -89,82 +105,7 @@ class ImageSwipeCore:
         # Cleanup the interface context
         dpg.destroy_context()
 
-    # UI Functions
-    def _buildToolbar(self):
-        """
-        Builds the primary window toolbar.
-        """
-        # Add top menu bar
-        with dpg.viewport_menu_bar(parent=self._TAG_WINDOW_MAIN):
-            with dpg.menu(label="File"):
-                dpg.add_menu_item(label="Quit", callback=self.__toolbarQuitCallback)
-
-            if self.debug:
-                with dpg.menu(label="Debug"):
-                    dpg.add_menu_item(label="Performance Metrics", callback=(lambda : dpg.show_tool(dpg.mvTool_Metrics)))
-                    dpg.add_menu_item(label="Item Registry", callback=(lambda : dpg.show_tool(dpg.mvTool_ItemRegistry)))
-                    dpg.add_menu_item(label="Style Editor", callback=(lambda : dpg.show_tool(dpg.mvTool_Style)))
-                    dpg.add_menu_item(label="Texture Registry", callback=(lambda : self._textures.showTextureRegistry()))
-                    dpg.add_separator()
-                    dpg.add_menu_item(label="Display Random Image", callback=(lambda : self._presentImage(choice(self._textures._textures))))
-
-    def __toolbarQuitCallback(self, sender: Union[int, str]):
-        """
-        Callback for when the user selects to quit from the toolbar.
-
-        sender: The tag of the sender.
-        """
-        # Confirm quit
-        createConfirmationModal(
-            "Quit",
-            "Are you sure you want to quit?",
-            confirmText="Quit",
-            cancelText="Go Back",
-            onConfirm=(lambda : dpg.stop_dearpygui())
-        )
-
-    def _buildMainWindow(self):
-        """
-        Builds the main window.
-        """
-        # Define sizing
-        sTopSpacer = 15
-        sButtonH = 64
-        sSpacer = 8
-
-        # Add main window
-        with dpg.window(tag=self._TAG_WINDOW_MAIN):
-            # Add toolbar spacer
-            dpg.add_spacer(height=sTopSpacer)
-
-            # Add the image display
-            with dpg.child_window(
-                width=-1,
-                height=-(sButtonH + sSpacer),
-                tag=self._TAG_WINDOW_IMAGE,
-                no_scrollbar=True,
-                no_scroll_with_mouse=True
-            ):
-                # Add the image display group
-                dpg.add_group(tag=self._TAG_GROUP_IMAGES)
-
-            # Add the buttons
-            with dpg.group(horizontal=True, tag=self._TAG_GROUP_CONTROLS): # TODO: Allow button configuration
-                # Prepare percentage layout
-                layout = PercentageLayout()
-
-                # Add the buttons
-                layout.addItem(dpg.add_button(label="Discard", height=sButtonH), 33)
-                layout.addItem(dpg.add_button(label="Favorite", height=sButtonH), 34)
-                layout.addItem(dpg.add_button(label="Save", height=sButtonH), 33)
-
-                # Apply the layout
-                layout.apply()
-
-        # Flag as presented
-        self._primaryWindowsPresented = True
-
-    def _presentImage(self, tags: Union[list[Union[int, str]], tuple[Union[int, str], ...], Union[int, str]]):
+    def presentImage(self, tags: Union[list[Union[int, str]], tuple[Union[int, str], ...], Union[int, str]]):
         """
         Presents the image with the given tag.
 
@@ -208,11 +149,86 @@ class ImageSwipeCore:
             )
 
             # Calculate best fit size
-            fitSize, pasteOffset = TextureManager.calcBestFitSize(self._textures._sizes[tag], parentSize, True)
+            fitSize, pasteOffset = TextureManager.calcBestFitSize(self._textureManager._sizes[tag], parentSize, True)
             leftPad = (parentSize[0] - fitSize[0]) // 2
 
             # Add the image
             dpg.add_image(tag, parent=parent, width=fitSize[0], height=fitSize[1], indent=leftPad)
+
+    # UI Functions
+    def _buildToolbar(self):
+        """
+        Builds the primary window toolbar.
+        """
+        # Add top menu bar
+        with dpg.viewport_menu_bar(parent=self._TAG_WINDOW_MAIN):
+            with dpg.menu(label="File"):
+                dpg.add_menu_item(label="Quit", callback=self.__toolbarQuitCallback)
+
+            if self.debug:
+                with dpg.menu(label="Debug"):
+                    dpg.add_menu_item(label="Performance Metrics", callback=(lambda : dpg.show_tool(dpg.mvTool_Metrics)))
+                    dpg.add_menu_item(label="Item Registry", callback=(lambda : dpg.show_tool(dpg.mvTool_ItemRegistry)))
+                    dpg.add_menu_item(label="Style Editor", callback=(lambda : dpg.show_tool(dpg.mvTool_Style)))
+                    dpg.add_menu_item(label="Texture Registry", callback=(lambda : self._textureManager.showTextureRegistry()))
+                    dpg.add_separator()
+                    dpg.add_menu_item(label="Display Random Image", callback=(lambda : self.presentImage(choice(self._textureManager._textures))))
+
+    def __toolbarQuitCallback(self, sender: Union[int, str]):
+        """
+        Callback for when the user selects to quit from the toolbar.
+
+        sender: The tag of the sender.
+        """
+        # Confirm quit
+        createConfirmationModal(
+            "Quit",
+            "Are you sure you want to quit?",
+            confirmText="Quit",
+            cancelText="Go Back",
+            onConfirm=(lambda : dpg.stop_dearpygui())
+        )
+
+    def _buildMainWindow(self):
+        """
+        Builds the main window.
+        """
+        # Define sizing
+        sTopSpacer = 15
+        sButtonH = 64
+        sSpacer = 8
+
+        # Add main window
+        with dpg.window(tag=self._TAG_WINDOW_MAIN):
+            # Add toolbar spacer
+            dpg.add_spacer(height=sTopSpacer)
+
+            # Add the image display
+            with dpg.child_window(
+                width=-1,
+                height=-(sButtonH + sSpacer),
+                tag=self._TAG_WINDOW_IMAGE,
+                no_scrollbar=True,
+                no_scroll_with_mouse=True
+            ):
+                # Add the image display group
+                dpg.add_group(tag=self._TAG_GROUP_IMAGES)
+
+            # Add the buttons
+            with dpg.group(horizontal=True, tag=self._TAG_GROUP_CONTROLS):
+                # Prepare percentage layout
+                layout = PercentageLayout()
+
+                # Add the buttons
+                btnPerc = (100 // len(self.buttons))
+                for btn in self.buttons:
+                    layout.addItem(dpg.add_button(label=btn.label, height=sButtonH), btnPerc)
+
+                # Apply the layout
+                layout.apply()
+
+        # Flag as presented
+        self._primaryWindowsPresented = True
 
     # Callbacks
     def __viewportResizedCallback(self, sender: Union[int, str], size: tuple[int, int, int, int]):
