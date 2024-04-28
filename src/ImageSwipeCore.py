@@ -38,6 +38,7 @@ class ImageSwipeCore:
         buttons: Optional[list[ActionButtonModel]] = None,
         hotkeys: Optional[list[HotkeySet]] = None,
         preloadBuffer: int = 3,
+        imgPerDisplay: int = 1,
         debug: bool = False
     ):
         """
@@ -45,6 +46,7 @@ class ImageSwipeCore:
         buttons: The buttons to display on the interface.
         hotkeys: A list of `HotkeySet` objects defining additional hotkey actions to register with the interface.
         preloadBuffer: The number of images to preload following the current image.
+        imgPerDisplay: The number of images to display at once.
         debug: If `True`, debug features will be enabled.
         """
         # Assign data
@@ -52,6 +54,13 @@ class ImageSwipeCore:
         self.outputDir = fullpath(outputDir)
         self.preloadBuffer = preloadBuffer
 
+        # Setup image per display
+        if imgPerDisplay < 1:
+            imgPerDisplay = 1
+
+        self.imgPerDisplay = imgPerDisplay
+
+        # Setup buttons
         if buttons is None:
             # Prepare default buttons
             self._buttons = [
@@ -71,9 +80,11 @@ class ImageSwipeCore:
             if debug:
                 print("Using provided buttons.")
 
+        # Setup image list
         self.__curImageIndex = 0
         self._images: list[TextureModel] = []
 
+        # Setup flags
         self._primaryWindowsPresented = False
         self.__onFirstFrameTriggered = False
 
@@ -210,7 +221,7 @@ class ImageSwipeCore:
         self._updateTextureCache()
 
         # Present the image
-        self._presentImage(self._images[self.__curImageIndex].tag)
+        self.__presentCurrentImage()
 
     # UI Functions
     def _buildToolbar(self):
@@ -407,6 +418,18 @@ class ImageSwipeCore:
 
         self.__imagesToSet = None
 
+    def __presentCurrentImage(self):
+        """
+        Presents the current image and handles display of multiple images if applicable.
+        """
+        # Decide if multiple images should be displayed
+        if (self.imgPerDisplay > 1) and ((self.__curImageIndex + self.imgPerDisplay) < len(self._images)):
+            # Display multiple
+            self._presentImage([img.tag for img in self._images[self.__curImageIndex:self.__curImageIndex + self.imgPerDisplay]])
+        else:
+            # Display single
+            self._presentImage(self._images[self.__curImageIndex].tag)
+
     def _showNextImage(self):
         """
         Shows the next image in the queue.
@@ -424,7 +447,7 @@ class ImageSwipeCore:
         self._updateTextureCache()
 
         # Present the image
-        self._presentImage(self._images[self.__curImageIndex].tag)
+        self.__presentCurrentImage()
 
         # Update the queue window
         self._updateQueueWindow()
@@ -445,7 +468,7 @@ class ImageSwipeCore:
         self._updateTextureCache()
 
         # Present the image
-        self._presentImage(self._images[self.__curImageIndex].tag)
+        self.__presentCurrentImage()
 
         # Update the queue window
         self._updateQueueWindow()
