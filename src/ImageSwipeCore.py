@@ -391,7 +391,7 @@ class ImageSwipeCore:
         os.makedirs(os.path.dirname(toPath), exist_ok=True)
 
         # Copy the image to the output directory
-        shutil.copy2(self._images[self.__curImageIndex].filepath, toPath)
+        shutil.copy2(self._images[self.__curImageIndex].filepath, toPath) # TODO: Provide option for move instead of copy
 
     # Callbacks
     def __viewportResizedCallback(self, sender: Union[int, str], size: tuple[int, int, int, int]):
