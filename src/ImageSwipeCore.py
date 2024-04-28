@@ -88,9 +88,10 @@ class ImageSwipeCore:
                 HotkeySet(
                     "Swipe Controls",
                     (
-                        Hotkey((dpg.mvKey_Left, ), "Discard image", (lambda : self._triggerButtonAction(RejectButtonModel()))),
-                        Hotkey((dpg.mvKey_Up, ), "Favorite image", (lambda : self._triggerButtonAction(HighlightButtonModel()))),
-                        Hotkey((dpg.mvKey_Right, ), "Keep image", (lambda : self._triggerButtonAction(AcceptButtonModel())))
+                        Hotkey((dpg.mvKey_Left, ), "Discard image", (lambda _ : self._triggerButtonAction(RejectButtonModel()))),
+                        Hotkey((dpg.mvKey_Up, ), "Favorite image", (lambda _ : self._triggerButtonAction(HighlightButtonModel()))),
+                        Hotkey((dpg.mvKey_Right, ), "Keep image", (lambda _ : self._triggerButtonAction(AcceptButtonModel()))),
+                        Hotkey((dpg.mvKey_Back, ), "Previous image", (lambda _ : self._showPrevImage())),
                     )
                 ), )
             )
@@ -411,13 +412,34 @@ class ImageSwipeCore:
         Shows the next image in the queue.
         """
         # Check that there is a next image
-        if (self.__curImageIndex + 1 > len(self._images)):
+        if ((self.__curImageIndex + 1) > len(self._images)):
             # No next image
-            # TODO: Show a message or something?
+            # TODO: Show a message or something? Callback?
             return
 
         # Increment the index
         self.__curImageIndex += 1
+
+        # Update the texture cache
+        self._updateTextureCache()
+
+        # Present the image
+        self._presentImage(self._images[self.__curImageIndex].tag)
+
+        # Update the queue window
+        self._updateQueueWindow()
+
+    def _showPrevImage(self):
+        """
+        Shows the previous image in the queue.
+        """
+        # Check that there is a previous image
+        if ((self.__curImageIndex - 1) < 0):
+            # No previous image
+            return
+
+        # Reduce the index
+        self.__curImageIndex -= 1
 
         # Update the texture cache
         self._updateTextureCache()
