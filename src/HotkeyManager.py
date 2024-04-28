@@ -2,7 +2,7 @@
 # Classes for handling hotkeys.
 
 # Imports
-from typing import Callable, Iterable
+from typing import Callable, Iterable, Union
 import dearpygui.dearpygui as dpg
 
 # Classes
@@ -11,17 +11,24 @@ class Hotkey:
     Data class for representing a hotkey and it's action.
     """
     # Constructor
-    def __init__(self, keys: Iterable[int], desc: str, callback: Callable[[], None]):
+    def __init__(self, keys: Iterable[int], desc: str, callback: Callable[['Hotkey'], None]):
         """
         Initializes a hotkey.
 
-        keys: The DearPyGui key codes that trigger the hotkey.
+        keys: The DearPyGui key codes that trigger the hotkey. The first key is used as the primary key and must be held down to register further keys.
         desc: A string description of the function of the hotkey to show in the interface.
-        callback: The callback function to perform when the hotkey is triggered.
+        callback: The callback function to perform when the hotkey is triggered. Must take a `Hotkey` object as an argument. This will be the defining hotkey object.
         """
         self.keys = keys
         self.desc = desc
         self.callback = callback
+
+    # Python Functions
+    def __repr__(self) -> str:
+        return f"Hotkey({self.keys}, {self.desc}, {self.callback})"
+
+    def __str__(self) -> str:
+        return f"Hotkey({self.keyString()}, {self.desc})"
 
     # Functions
     def keyString(self, fallback: str = "KEY") -> str:
@@ -47,6 +54,13 @@ class HotkeySet:
         self.title = title
         self.hotkeys = hotkeys
 
+    # Python Functions
+    def __repr__(self) -> str:
+        return f"HotkeySet({self.title}, {self.hotkeys})"
+
+    def __str__(self) -> str:
+        return f"HotkeySet({self.title}, {self.hotkeys})"
+
     # Functions
     def register(self):
         """
@@ -55,7 +69,13 @@ class HotkeySet:
         """
         # Add the hotkeys
         for hotkey in self.hotkeys:
-            dpg.add_key_release_handler(hotkey.keys[0], callback=hotkey.callback)
+            # Check if the hotkey has multiple keys
+            if (len(hotkey.keys) > 1):
+                # Add key down handler for the primary key
+                dpg.add_key_down_handler(hotkey.keys[0], user_data=hotkey, callback=self.__hotkeyCallback)
+            else:
+                # Add key release handler for the primary key
+                dpg.add_key_release_handler(hotkey.keys[0], user_data=hotkey, callback=self.__hotkeyCallback)
 
     def definitions(self) -> dict[str, str]:
         """
@@ -63,6 +83,24 @@ class HotkeySet:
         """
         # Loop through hotkeys
         return {hotkey.keyString(): hotkey.desc for hotkey in self.hotkeys}
+
+    # Private Functions
+    def __hotkeyCallback(self, sender: Union[int, str], keyData: Union[int, list[int, float]], hotkey: Hotkey):
+        """
+        Callback for when a hotkey is triggered.
+
+        sender: The tag of the sender.
+        keyData: The key data as returned by the key handler. If an `int`, it is the key code. If a `list`, it is the key code and the duration the key has been pressed.
+        hotkey: The hotkey that was triggered.
+        """
+        # Check if the other keys are held down
+        for key in hotkey.keys[1:]:
+            if not dpg.is_key_pressed(key):
+                # Exit
+                return
+
+        # Call the hotkey's callback
+        hotkey.callback(hotkey)
 
 class HotkeyManager:
     """
