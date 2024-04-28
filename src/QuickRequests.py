@@ -102,4 +102,4 @@ class QuickRequests:
 
 # Command Line
 if __name__ == "__main__":
-    print("No command line has been implemented for this file.")
+    print("This file does not contain a command line interface.")

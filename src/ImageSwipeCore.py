@@ -13,6 +13,7 @@ from .PercentageLayout import PercentageLayout
 from .TextureManager import TextureManager
 from .TextureModel import TextureModel
 from .ActionButtonModel import ActionButtonModel, RejectButtonModel, AcceptButtonModel, HighlightButtonModel
+from .HotkeyManager import Hotkey, HotkeySet, HotkeyManager
 
 # Classes
 class ImageSwipeCore:
@@ -35,12 +36,14 @@ class ImageSwipeCore:
     def __init__(self,
         outputDir: str,
         buttons: Optional[list[ActionButtonModel]] = None,
+        hotkeys: Optional[list[HotkeySet]] = None,
         preloadBuffer: int = 3,
         debug: bool = False
     ):
         """
         outputDir: The directory to place output directories in.
         buttons: The buttons to display on the interface.
+        hotkeys: A list of `HotkeySet` objects defining additional hotkey actions to register with the interface.
         preloadBuffer: The number of images to preload following the current image.
         debug: If `True`, debug features will be enabled.
         """
@@ -56,9 +59,17 @@ class ImageSwipeCore:
                 HighlightButtonModel(),
                 AcceptButtonModel()
             ]
+
+            # Check if debug
+            if debug:
+                print("Using default buttons.")
         else:
             # Use provided buttons
             self._buttons = buttons
+
+            # Check if debug
+            if debug:
+                print("Using provided buttons.")
 
         self.__curImageIndex = 0
         self._images: list[TextureModel] = []
@@ -66,8 +77,41 @@ class ImageSwipeCore:
         self._primaryWindowsPresented = False
         self.__onFirstFrameTriggered = False
 
-        # Prepare sub objects
+        # Prepare texture manager
         self._textureManager: Optional[TextureManager] = None
+
+        # Prepare hotkey manager
+        self._hotkeyManager: Optional[HotkeyManager]
+        if buttons is None:
+            # Load default hotkeys
+            self._hotkeyManager = HotkeyManager((
+                HotkeySet(
+                    "Swipe Controls",
+                    (
+                        Hotkey((dpg.mvKey_Left, ), "Discard image", (lambda : self._triggerButtonAction(RejectButtonModel()))),
+                        Hotkey((dpg.mvKey_Up, ), "Favorite image", (lambda : self._triggerButtonAction(HighlightButtonModel()))),
+                        Hotkey((dpg.mvKey_Right, ), "Keep image", (lambda : self._triggerButtonAction(AcceptButtonModel())))
+                    )
+                ), )
+            )
+
+            # Check if debug
+            if debug:
+                print("Using default hotkeys.")
+        elif hotkeys is not None:
+            # Load only provided hotkeys
+            self._hotkeyManager = HotkeyManager(hotkeys)
+
+            # Check if debug
+            if debug:
+                print("Using provided hotkeys.")
+        else:
+            # Load no hotkeys
+            self._hotkeyManager = None
+
+            # Check if debug
+            if debug:
+                print("Hotkeys are disabled.")
 
         # Image check
         if not os.path.exists(self._PATH_ICON_SMALL):
@@ -91,6 +135,10 @@ class ImageSwipeCore:
             large_icon=self._PATH_ICON_LARGE
         )
         dpg.setup_dearpygui()
+
+        # Setup the hotkeys
+        if self._hotkeyManager is not None:
+            self._hotkeyManager.registerHotkeys()
 
         # Set the viewport resize callback
         dpg.set_viewport_resize_callback(self.__viewportResizedCallback)
@@ -174,7 +222,10 @@ class ImageSwipeCore:
                 dpg.add_menu_item(label="Quit", callback=self.__toolbarQuitCallback)
 
             with dpg.menu(label="View"):
-                dpg.add_menu_item(label="Queue", callback=self.__toolbarShowQueueCallback)
+                dpg.add_menu_item(label="Image Queue", callback=self.__toolbarShowQueueCallback)
+
+            if self._hotkeyManager is not None:
+                self._hotkeyManager.buildToolbar()
 
             if self.debug:
                 with dpg.menu(label="Debug"):
@@ -393,6 +444,29 @@ class ImageSwipeCore:
         # Copy the image to the output directory
         shutil.copy2(self._images[self.__curImageIndex].filepath, toPath) # TODO: Provide option for move instead of copy
 
+    def _triggerButtonAction(self, btn: ActionButtonModel):
+        """
+        Triggers the action of the given button.
+
+        btn: The `ActionButtonModel` object associated with the button.
+        """
+        # Decide on the button type
+        if btn.action == ActionButtonModel.ACTION_REJECT:
+            # Reject button
+            self._showNextImage()
+        elif btn.action == ActionButtonModel.ACTION_ACCEPT:
+            # Accept button
+            self._saveCurrentImage(os.path.join(
+                self.outputDir,
+                btn.dirName,
+                os.path.basename(self._images[self.__curImageIndex].filepath)
+            ))
+            self._showNextImage()
+
+        # Trigger the button action
+        if btn.callback is not None:
+            btn.callback()
+
     # Callbacks
     def __viewportResizedCallback(self, sender: Union[int, str], size: tuple[int, int, int, int]):
         """
@@ -438,22 +512,7 @@ class ImageSwipeCore:
         v: The value of the sender.
         btn: The `ActionButtonModel` object associated with the button.
         """
-        # Decide on the button type
-        if btn.action == ActionButtonModel.ACTION_REJECT:
-            # Reject button
-            self._showNextImage()
-        elif btn.action == ActionButtonModel.ACTION_ACCEPT:
-            # Accept button
-            self._saveCurrentImage(os.path.join(
-                self.outputDir,
-                btn.dirName,
-                os.path.basename(self._images[self.__curImageIndex].filepath)
-            ))
-            self._showNextImage()
-
-        # Trigger the button action
-        if btn.callback is not None:
-            btn.callback()
+        self._triggerButtonAction(btn)
 
 # Command Line
 if __name__ == "__main__":
