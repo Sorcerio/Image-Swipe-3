@@ -39,6 +39,7 @@ class ImageSwipeCore:
         hotkeys: Optional[list[HotkeySet]] = None,
         preloadBuffer: int = 3,
         imgPerDisplay: int = 1,
+        iterPerAction: int = 1,
         debug: bool = False
     ):
         """
@@ -47,6 +48,7 @@ class ImageSwipeCore:
         hotkeys: A list of `HotkeySet` objects defining additional hotkey actions to register with the interface.
         preloadBuffer: The number of images to preload following the current image.
         imgPerDisplay: The number of images to display at once.
+        iterPerAction: The amount that the image index should be incremented by for each action.
         debug: If `True`, debug features will be enabled.
         """
         # Assign data
@@ -59,6 +61,12 @@ class ImageSwipeCore:
             imgPerDisplay = 1
 
         self.imgPerDisplay = imgPerDisplay
+
+        # Setup iteration per action
+        if iterPerAction < 1:
+            iterPerAction = 1
+
+        self.iterPerAction = iterPerAction
 
         # Setup buttons
         if buttons is None:
@@ -435,13 +443,14 @@ class ImageSwipeCore:
         Shows the next image in the queue.
         """
         # Check that there is a next image
-        if ((self.__curImageIndex + 1) > len(self._images)):
+        if ((self.__curImageIndex + self.iterPerAction) > len(self._images)):
             # No next image
+            # TODO: Handle if any images are left outside the scope of numbers available with the iterPerAction
             # TODO: Show a message or something? Callback?
             return
 
         # Increment the index
-        self.__curImageIndex += 1
+        self.__curImageIndex += self.iterPerAction
 
         # Update the texture cache
         self._updateTextureCache()
@@ -457,12 +466,13 @@ class ImageSwipeCore:
         Shows the previous image in the queue.
         """
         # Check that there is a previous image
-        if ((self.__curImageIndex - 1) < 0):
+        if ((self.__curImageIndex - self.iterPerAction) < 0):
             # No previous image
+            # TODO: Handle if any images are left outside the scope of numbers available with the iterPerAction
             return
 
         # Reduce the index
-        self.__curImageIndex -= 1
+        self.__curImageIndex -= self.iterPerAction
 
         # Update the texture cache
         self._updateTextureCache()
