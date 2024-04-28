@@ -401,15 +401,13 @@ class ImageSwipeCore:
         # Apply the layout
         contentTags = layout.apply()
 
-        self.__imagesToSet = tuple(zip(contentTags, tags))
-
         # Wait for windows to size
         dpg.split_frame()
 
         # Add sized images
         padding = 10
         # for parent, tag in zip(contentTags, tags):
-        for parent, tag in self.__imagesToSet:
+        for i, parent, tag in zip(tuple(range(len(contentTags))), contentTags, tags):
             # Get the parent size
             parentSize = dpg.get_item_rect_size(parent)
             parentSize = (
@@ -424,7 +422,9 @@ class ImageSwipeCore:
             # Add the image
             dpg.add_image(tag, parent=parent, width=fitSize[0], height=fitSize[1], indent=leftPad)
 
-        self.__imagesToSet = None
+            with dpg.tooltip(dpg.last_item()):
+                primaryLabel = "\nPrimary Image" if i == 0 else ""
+                dpg.add_text(f"{tag}{primaryLabel}")
 
     def __presentCurrentImage(self):
         """
@@ -445,7 +445,7 @@ class ImageSwipeCore:
         # Check that there is a next image
         if ((self.__curImageIndex + self.iterPerAction) > len(self._images)):
             # No next image
-            # TODO: Handle if any images are left outside the scope of numbers available with the iterPerAction
+            # TODO: Handle if any images are left outside the scope of numbers available with the iterPerAction?
             # TODO: Show a message or something? Callback?
             return
 
