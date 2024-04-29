@@ -110,7 +110,7 @@ class ImageSwipeCore:
                         Hotkey((dpg.mvKey_Left, ), "Discard image", (lambda _ : self._triggerButtonAction(RejectButtonModel()))),
                         Hotkey((dpg.mvKey_Up, ), "Favorite image", (lambda _ : self._triggerButtonAction(HighlightButtonModel()))),
                         Hotkey((dpg.mvKey_Right, ), "Keep image", (lambda _ : self._triggerButtonAction(AcceptButtonModel()))),
-                        Hotkey((dpg.mvKey_Back, ), "Previous image", (lambda _ : self._showPrevImage())),
+                        Hotkey((dpg.mvKey_Back, ), "Previous image", (lambda _ : self.showPrevImage())),
                     )
                 ), )
             )
@@ -229,7 +229,7 @@ class ImageSwipeCore:
         self._updateTextureCache()
 
         # Present the image
-        self.__presentCurrentImage()
+        self.presentCurrentImage()
 
     # UI Functions
     def _buildToolbar(self):
@@ -254,7 +254,7 @@ class ImageSwipeCore:
                     dpg.add_menu_item(label="Style Editor", callback=(lambda : dpg.show_tool(dpg.mvTool_Style)))
                     dpg.add_menu_item(label="Texture Registry", callback=(lambda : self._textureManager.showTextureRegistry()))
                     dpg.add_separator()
-                    dpg.add_menu_item(label="Display Random Image", callback=(lambda : self._presentImage(choice(self._textureManager._textures))))
+                    dpg.add_menu_item(label="Display Random Image", callback=(lambda : self.presentImage(choice(self._textureManager._textures))))
 
     def _buildMainWindow(self):
         """
@@ -356,6 +356,8 @@ class ImageSwipeCore:
             if (self.__curImageIndex + i < len(self._images)):
                 self._loadImageToCache(self._images[self.__curImageIndex + i])
 
+        # TODO: Unload images that are no longer relevant taking into account backwards travel
+
     def _loadImageToCache(self, image: TextureModel):
         """
         Loads the given image to the texture cache.
@@ -371,7 +373,7 @@ class ImageSwipeCore:
             # Load the image
             self._textureManager.registerTexture(image.filepath, image.tag, image.label)
 
-    def _presentImage(self, tags: Union[list[Union[int, str]], tuple[Union[int, str], ...], Union[int, str]]):
+    def presentImage(self, tags: Union[list[Union[int, str]], tuple[Union[int, str], ...], Union[int, str]]):
         """
         Presents the image with the given tag.
 
@@ -426,19 +428,19 @@ class ImageSwipeCore:
                 primaryLabel = "\nPrimary Image" if i == 0 else ""
                 dpg.add_text(f"{tag}{primaryLabel}")
 
-    def __presentCurrentImage(self):
+    def presentCurrentImage(self):
         """
         Presents the current image and handles display of multiple images if applicable.
         """
         # Decide if multiple images should be displayed
         if (self.imgPerDisplay > 1) and ((self.__curImageIndex + self.imgPerDisplay) < len(self._images)):
             # Display multiple
-            self._presentImage([img.tag for img in self._images[self.__curImageIndex:self.__curImageIndex + self.imgPerDisplay]])
+            self.presentImage([img.tag for img in self._images[self.__curImageIndex:self.__curImageIndex + self.imgPerDisplay]])
         else:
             # Display single
-            self._presentImage(self._images[self.__curImageIndex].tag)
+            self.presentImage(self._images[self.__curImageIndex].tag)
 
-    def _showNextImage(self):
+    def showNextImage(self):
         """
         Shows the next image in the queue.
         """
@@ -456,12 +458,12 @@ class ImageSwipeCore:
         self._updateTextureCache()
 
         # Present the image
-        self.__presentCurrentImage()
+        self.presentCurrentImage()
 
         # Update the queue window
         self._updateQueueWindow()
 
-    def _showPrevImage(self):
+    def showPrevImage(self):
         """
         Shows the previous image in the queue.
         """
@@ -478,26 +480,35 @@ class ImageSwipeCore:
         self._updateTextureCache()
 
         # Present the image
-        self.__presentCurrentImage()
+        self.presentCurrentImage()
 
         # Update the queue window
         self._updateQueueWindow()
 
-    def _saveCurrentImage(self, toPath: str):
+    def saveCurrentImage(self, toPath: str):
         """
         Saves the current image to the given directory.
 
         toPath: The path to save the image to.
         """
+        self.saveImageAtIndex(self.__curImageIndex, toPath)
+
+    def saveImageAtIndex(self, index: int, toPath: str):
+        """
+        Saves the specified image to the given path.
+
+        index: The index of the image to save in the queue.
+        toPath: The path to save the image to.
+        """
         # Check if debug
         if self.debug:
-            print(f"Saving image at index {self.__curImageIndex} to: {toPath}")
+            print(f"Saving image at index {index} to: {toPath}")
 
         # Make the output directory
         os.makedirs(os.path.dirname(toPath), exist_ok=True)
 
         # Copy the image to the output directory
-        shutil.copy2(self._images[self.__curImageIndex].filepath, toPath) # TODO: Provide option for move instead of copy
+        shutil.copy2(self._images[index].filepath, toPath) # TODO: Provide option for move instead of copy
 
     def _triggerButtonAction(self, btn: ActionButtonModel):
         """
@@ -508,15 +519,15 @@ class ImageSwipeCore:
         # Decide on the button type
         if btn.action == ActionButtonModel.ACTION_REJECT:
             # Reject button
-            self._showNextImage()
+            self.showNextImage()
         elif btn.action == ActionButtonModel.ACTION_ACCEPT:
             # Accept button
-            self._saveCurrentImage(os.path.join(
+            self.saveCurrentImage(os.path.join(
                 self.outputDir,
                 btn.dirName,
                 os.path.basename(self._images[self.__curImageIndex].filepath)
             ))
-            self._showNextImage()
+            self.showNextImage()
 
         # Trigger the button action
         if btn.callback is not None:

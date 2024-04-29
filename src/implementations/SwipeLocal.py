@@ -26,7 +26,7 @@ class SwipeLocal:
     ):
         """
         outputDir: The directory to place output directories in.
-        inputDir: The directory to start the directory selector dialog in.
+        rootDir: The directory to start the directory selector dialog in.
         extensions: A list of valid image extensions.
         debug: If `True`, debug features will be enabled.
         """
