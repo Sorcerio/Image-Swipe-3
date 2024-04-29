@@ -3,11 +3,10 @@
 
 # Imports
 import os
-from typing import Union, Any
-import dearpygui.dearpygui as dpg
+import argparse
 
 from .SwipeLocal import SwipeLocal
-from ..ImageSwipeShared import VALID_IMAGE_EXTS, fullpath, loadImagesFromDir
+from ..ImageSwipeShared import VALID_IMAGE_EXTS, fullpath
 from ..ImageSwipeCore import ImageSwipeCore
 from ..ActionButtonModel import ActionButtonModel, RejectButtonModel
 
@@ -16,6 +15,10 @@ class SwipeLocalMulti(SwipeLocal):
     """
     Image Swipe 3 implementation for local image sorting where multiple images are shown but only one can be selected.
     """
+    # Constants
+    CLI_PROG = "localmulti"
+    CLI_DESC = "Sort images from a local directory with multiple images per swipe."
+
     # Constructor
     def __init__(self,
         outputDir: str,
@@ -27,6 +30,7 @@ class SwipeLocalMulti(SwipeLocal):
         """
         outputDir: The directory to place output directories in.
         rootDir: The directory to start the directory selector dialog in.
+        imagesPer: The number of images to show at once.
         extensions: A list of valid image extensions.
         debug: If `True`, debug features will be enabled.
         """
@@ -62,6 +66,40 @@ class SwipeLocalMulti(SwipeLocal):
             iterPerAction=imagesPer,
             debug=debug
         )
+
+    # Static Functions
+    @classmethod
+    def fromArgs(cls, args: argparse.Namespace) -> 'SwipeLocalMulti':
+        """
+        Creates a new instance of this implementation using the given command line arguments.
+
+        args: The command line arguments to use.
+
+        Returns the new instance.
+        """
+        return cls(
+            args.output,
+            rootDir=args.root,
+            imagesPer=args.imagesPer,
+            extensions=args.extensions,
+            debug=args.debug
+        )
+
+    @staticmethod
+    def buildParser(parser: argparse.ArgumentParser):
+        """
+        Sets up the given command line parser with the required arguments for this implementation.
+
+        parser: The parser to setup.
+        """
+        # Add required arguments
+        parser.add_argument("output", type=str, help="The directory to place output directories in.")
+
+        # Add optional arguments
+        parser.add_argument("-r", "--root", help="The directory to start the directory selector dialog in.", type=str, default="")
+        parser.add_argument("-i", "--imagesPer", help="The number of images to show at once. (Default: %(default)s)", metavar="NUM", type=int, default=2)
+        parser.add_argument("-e", "--extensions", help=f"A list of valid image extensions. (Default: {', '.join(VALID_IMAGE_EXTS)})", metavar="EXT", nargs='+', default=VALID_IMAGE_EXTS)
+        parser.add_argument("--debug", help="If provided, enables debug mode.", action="store_true")
 
     # Callback Functions
     def __keepButtonCallback(self, btnData: tuple[int, str]):

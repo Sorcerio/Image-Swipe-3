@@ -3,18 +3,23 @@
 
 # Imports
 import os
+import argparse
 from typing import Union, Any
 import dearpygui.dearpygui as dpg
 
+from .SwiperImplementation import SwiperImplementation
 from ..ImageSwipeShared import VALID_IMAGE_EXTS, fullpath, loadImagesFromDir
 from ..ImageSwipeCore import ImageSwipeCore
 
 # Classes
-class SwipeLocal:
+class SwipeLocal(SwiperImplementation):
     """
     Image Swipe 3 implementation for local image sorting.
     """
     # Constants
+    CLI_PROG = "local"
+    CLI_DESC = "Sort images from a local directory."
+
     SIZE_FILESELECT = (800, 600)
 
     # Constructor
@@ -50,6 +55,38 @@ class SwipeLocal:
         """
         # Display the core
         self.core.display(onFirstFrame=self.__onFirstFrame)
+
+    # Static Functions
+    @classmethod
+    def fromArgs(cls, args: argparse.Namespace) -> 'SwipeLocal':
+        """
+        Creates a new instance of this implementation using the given command line arguments.
+
+        args: The command line arguments to use.
+
+        Returns the new instance.
+        """
+        return cls(
+            args.output,
+            rootDir=args.root,
+            extensions=args.extensions,
+            debug=args.debug
+        )
+
+    @staticmethod
+    def buildParser(parser: argparse.ArgumentParser):
+        """
+        Sets up the given command line parser with the required arguments for this implementation.
+
+        parser: The parser to setup.
+        """
+        # Add required arguments
+        parser.add_argument("output", type=str, help="The directory to place output directories in.")
+
+        # Add optional arguments
+        parser.add_argument("-r", "--root", help="The directory to start the directory selector dialog in.", type=str, default="")
+        parser.add_argument("-e", "--extensions", help=f"A list of valid image extensions. (Default: {', '.join(VALID_IMAGE_EXTS)})", metavar="EXT", nargs='+', default=VALID_IMAGE_EXTS)
+        parser.add_argument("--debug", help="If provided, enables debug mode.", action="store_true")
 
     # Private Functions
     def __onFirstFrame(self):
