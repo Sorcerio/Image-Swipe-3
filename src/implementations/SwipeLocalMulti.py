@@ -38,7 +38,6 @@ class SwipeLocalMulti(SwipeLocal):
 
         # Get full paths
         self.rootDir = fullpath(rootDir)
-        self.outputDir = fullpath(outputDir)
 
         # Prepare buttons
         buttons: list[ActionButtonModel] = []
@@ -47,14 +46,15 @@ class SwipeLocalMulti(SwipeLocal):
             buttons.append(ActionButtonModel(
                 label=f"Keep #{i + 1}",
                 action=ActionButtonModel.ACTION_CUSTOM,
-                callback=self.__keepButtonCallback
+                callback=self.__keepButtonCallback,
+                userData=(i, "Keep")
             ))
 
         buttons.append(RejectButtonModel(label="Discard All"))
 
         # Prepare the core
         self.core = ImageSwipeCore(
-            outputDir,
+            fullpath(outputDir),
             buttons=buttons,
             hotkeys=None,
             preloadBuffer=round(3 * imagesPer),
@@ -64,11 +64,27 @@ class SwipeLocalMulti(SwipeLocal):
         )
 
     # Callback Functions
-    def __keepButtonCallback(self):
+    def __keepButtonCallback(self, btnData: tuple[int, str]):
         """
         Callback to handle custom "Keep" button presses.
+
+        btnData: A tuple containing the index of the button pressed and the name of the output directory.
         """
-        print("Keep button pressed.")
+        # Extract button data
+        btnIndex, dirName = btnData
+
+        # Get the current image
+        curIndex, curImg = tuple(self.core.getPresentedImages().items())[btnIndex]
+
+        # Save the selected image
+        self.core.saveCurrentImage(os.path.join(
+            self.core.outputDir,
+            dirName,
+            os.path.basename(curImg.filepath)
+        ))
+
+        # Show the next image
+        self.core.showNextImage()
 
 # Command Line
 if __name__ == "__main__":

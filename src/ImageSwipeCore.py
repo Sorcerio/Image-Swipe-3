@@ -428,11 +428,23 @@ class ImageSwipeCore:
             with dpg.tooltip(dpg.last_item()):
                 dpg.add_text(f"Image #{i + 1}\n\"{tag}\"")
 
-    def getPresentedImages(self) -> tuple[TextureModel, ...]:
+    def getPresentedImages(self) -> dict[int, TextureModel]:
         """
-        Gets a tuple of the `TextureModel` objects currently presented.
+        Gets the `TextureModel` objects currently presented.
+
+        Returns a dict of the presented images with their index in the queue as the key.
         """
-        return tuple(self._images[self.__curImageIndex:(self.__curImageIndex + self.imgPerDisplay)])
+        # Look through active range
+        imgs = {}
+        for i in range(self.__curImageIndex, (self.__curImageIndex + self.imgPerDisplay)):
+            # Check if out of range
+            if i >= len(self._images):
+                break
+
+            # Record
+            imgs[i] = self._images[i]
+
+        return imgs
 
     def presentCurrentImage(self):
         """
@@ -537,7 +549,7 @@ class ImageSwipeCore:
 
         # Trigger the button action
         if btn.callback is not None:
-            btn.callback()
+            btn.callback(btn.userData)
 
     # Callbacks
     def __viewportResizedCallback(self, sender: Union[int, str], size: tuple[int, int, int, int]):

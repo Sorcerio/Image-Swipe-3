@@ -36,11 +36,10 @@ class SwipeLocal:
 
         # Get full paths
         self.rootDir = fullpath(rootDir)
-        self.outputDir = fullpath(outputDir)
 
         # Prepare the core
         self.core = ImageSwipeCore(
-            outputDir,
+            fullpath(outputDir),
             debug=debug
         )
 
