@@ -19,6 +19,13 @@ class TextureModel:
         self.tag = f"{tag}_tex"
         self.label = (label or self.tag)
 
+    # Python Functions
+    def __repr__(self) -> str:
+        return f"TextureModel({self.filepath}, {self.tag}, {self.label})"
+
+    def __str__(self) -> str:
+        return f"TextureModel({self.filepath}, {self.tag}, {self.label})"
+
 # Command Line
 if __name__ == "__main__":
     print("This file does not contain a command line interface.")

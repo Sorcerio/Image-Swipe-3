@@ -255,6 +255,7 @@ class ImageSwipeCore:
                     dpg.add_menu_item(label="Texture Registry", callback=(lambda : self._textureManager.showTextureRegistry()))
                     dpg.add_separator()
                     dpg.add_menu_item(label="Display Random Image", callback=(lambda : self.presentImage(choice(self._textureManager._textures))))
+                    dpg.add_menu_item(label="List Current Images", callback=(lambda : print(f"Images: {self.getPresentedImages()}")))
 
     def _buildMainWindow(self):
         """
@@ -425,8 +426,13 @@ class ImageSwipeCore:
             dpg.add_image(tag, parent=parent, width=fitSize[0], height=fitSize[1], indent=leftPad)
 
             with dpg.tooltip(dpg.last_item()):
-                primaryLabel = "\nPrimary Image" if i == 0 else ""
-                dpg.add_text(f"{tag}{primaryLabel}")
+                dpg.add_text(f"Image #{i + 1}\n\"{tag}\"")
+
+    def getPresentedImages(self) -> tuple[TextureModel, ...]:
+        """
+        Gets a tuple of the `TextureModel` objects currently presented.
+        """
+        return tuple(self._images[self.__curImageIndex:(self.__curImageIndex + self.imgPerDisplay)])
 
     def presentCurrentImage(self):
         """
