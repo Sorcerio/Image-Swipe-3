@@ -14,6 +14,7 @@ from .TextureManager import TextureManager
 from .TextureModel import TextureModel
 from .ActionButtonModel import ActionButtonModel, RejectButtonModel, AcceptButtonModel, HighlightButtonModel
 from .HotkeyManager import Hotkey, HotkeySet, HotkeyManager
+from .ImageQueueWindow import ImageQueueWindow
 
 # Classes
 class ImageSwipeCore:
@@ -26,11 +27,9 @@ class ImageSwipeCore:
 
     _TAG_WINDOW_MAIN = "mainWindow"
     _TAG_WINDOW_IMAGE = "imageDisplay"
-    _TAG_WINDOW_QUEUE = "queueWindow"
     _TAG_GROUP_IMAGES = "imageDisplayGroup"
     _TAG_PRIMARY_IMAGE = "primaryImage"
     _TAG_GROUP_CONTROLS = "controlsGroup"
-    _TAG_GROUP_QUEUE_CONTENT = "queueContent"
 
     # Constructor
     def __init__(self,
@@ -133,6 +132,9 @@ class ImageSwipeCore:
             if debug:
                 print("Hotkeys are disabled.")
 
+        # Prepare the Queue Window
+        self._queueWindow = ImageQueueWindow()
+
         # Image check
         if not os.path.exists(self._PATH_ICON_SMALL):
             print(f"No small icon file at: {self._PATH_ICON_SMALL}")
@@ -171,7 +173,7 @@ class ImageSwipeCore:
 
         # Build core windows
         self._buildMainWindow()
-        self._buildQueueWindow()
+        self._queueWindow.register()
 
         # Show the interface
         dpg.show_viewport()
@@ -302,40 +304,6 @@ class ImageSwipeCore:
 
         # Flag as presented
         self._primaryWindowsPresented = True
-
-    def _buildQueueWindow(self):
-        """
-        Builds the queue display window.
-        """
-        # Add queue window
-        dpg.add_window(label="Image Queue", tag=self._TAG_WINDOW_QUEUE, show=False)
-
-        # Update the queue window
-        self._updateQueueWindow()
-
-    def _updateQueueWindow(self):
-        """
-        Updates the content of the queue window.
-        """
-        # Remove the old content group
-        dpg.delete_item(self._TAG_GROUP_QUEUE_CONTENT)
-
-        # Add the content group
-        with dpg.group(tag=self._TAG_GROUP_QUEUE_CONTENT, parent=self._TAG_WINDOW_QUEUE):
-            # Add the count text
-            dpg.add_text(f"Viewing Image: {self.__curImageIndex + 1} of {len(self._images)}")
-
-            # Add the queue display
-            with dpg.child_window():
-                # Loop through the queue
-                for i, image in enumerate(self._images): # TODO: Add to table with more info and skip-to button
-                    # Check if current
-                    if (i == self.__curImageIndex):
-                        # Show text with current
-                        dpg.add_text(f"(CURRENT) {i + 1}: {image.label}", bullet=True)
-                    else:
-                        # Show text
-                        dpg.add_text(f"{i + 1}: {image.label}", bullet=True)
 
     def _updateTextureCache(self):
         """
@@ -484,7 +452,7 @@ class ImageSwipeCore:
         self.presentCurrentImage()
 
         # Update the queue window
-        self._updateQueueWindow()
+        self._queueWindow.update(self.__curImageIndex, self._images)
 
     def showPrevImage(self):
         """
@@ -506,7 +474,7 @@ class ImageSwipeCore:
         self.presentCurrentImage()
 
         # Update the queue window
-        self._updateQueueWindow()
+        self._queueWindow.update(self.__curImageIndex, self._images)
 
     def saveCurrentImage(self, toPath: str):
         """
@@ -587,11 +555,7 @@ class ImageSwipeCore:
 
         sender: The tag of the sender.
         """
-        # Update the queue window
-        self._updateQueueWindow()
-
-        # Show the queue window
-        dpg.show_item(self._TAG_WINDOW_QUEUE)
+        self._queueWindow.display(self.__curImageIndex, self._images)
 
     def __controlButtonCallback(self, sender: Union[int, str], v: Any, btn: ActionButtonModel):
         """
