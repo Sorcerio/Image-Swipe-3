@@ -30,8 +30,8 @@ class TextureManager:
             raise FileNotFoundError(f"No error image file at: {self._PATH_IMAGE_ERROR}")
 
         # Prepare records
-        self._textures: list[Union[int, str]] = []
-        self._sizes: dict[Union[int, str], tuple[int, int]] = {}
+        self._textures: list[Union[int, str]] = [] # List of all texture tags
+        self._sizes: dict[Union[int, str], tuple[int, int]] = {} # Texture Tag: Image Size
 
         # Register the error image
         self.registerTexture(self._PATH_IMAGE_ERROR, self._TAG_IMAGE_ERROR)
@@ -41,6 +41,11 @@ class TextureManager:
         """
         Shows the texture registry.
         """
+        # Make sure it exists
+        if not dpg.does_item_exist(self._TAG_TEXTURE_REGISTRY):
+            # Create it
+            dpg.add_texture_registry(label="Texture Registry", tag=self._TAG_TEXTURE_REGISTRY)
+
         # Show the texture registry
         dpg.configure_item(self._TAG_TEXTURE_REGISTRY, show=True)
 
@@ -80,6 +85,15 @@ class TextureManager:
         self._sizes[tag] = (width, height)
 
     # TODO: removeTexture
+
+    def dumpTextures(self):
+        """
+        Dumps all textures from the texture registry by deleting the registry.
+        """
+        # Make sure it exists
+        if dpg.does_item_exist(self._TAG_TEXTURE_REGISTRY):
+            # Rip
+            dpg.delete_item(self._TAG_TEXTURE_REGISTRY)
 
     # Static Functions
     @staticmethod

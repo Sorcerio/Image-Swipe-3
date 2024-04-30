@@ -46,7 +46,7 @@ class ImageSwipeCore:
         outputDir: The directory to place output directories in.
         buttons: The buttons to display on the interface.
         hotkeys: A list of `HotkeySet` objects defining additional hotkey actions to register with the interface.
-        preloadBuffer: The number of images to preload following the current image.
+        preloadBuffer: The number of images to preload around the current image.
         imgPerDisplay: The number of images to display at once.
         iterPerAction: The amount that the image index should be incremented by for each action.
         debug: If `True`, debug features will be enabled.
@@ -345,19 +345,24 @@ class ImageSwipeCore:
         if self._textureManager is None:
             raise ValueError("Texture Manager is not ready for input.")
 
-        # Load the image before current
-        if (self.__curImageIndex > 0):
-            self._loadImageToCache(self._images[self.__curImageIndex - 1])
+        # Get the length of the queue
+        queueLength = len(self._images)
 
         # Load the current image
-        self._loadImageToCache(self._images[self.__curImageIndex])
+        if (self.__curImageIndex < queueLength):
+            self._loadImageToCache(self._images[self.__curImageIndex])
 
-        # Load images after current for buffer length
+        # Load images for buffer length in both directions
         for i in range(1, self.preloadBuffer + 1):
-            if (self.__curImageIndex + i < len(self._images)):
+            # Forward
+            if ((self.__curImageIndex + i) < queueLength):
                 self._loadImageToCache(self._images[self.__curImageIndex + i])
 
-        # TODO: Unload images that are no longer relevant taking into account backwards travel
+            # Backward
+            if ((self.__curImageIndex - i) >= 0):
+                self._loadImageToCache(self._images[self.__curImageIndex - i])
+
+        # TODO: Unload images that are no longer relevant taking into account backwards travel?
 
     def _loadImageToCache(self, image: TextureModel):
         """
