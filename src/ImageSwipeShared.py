@@ -22,7 +22,7 @@ def fullpath(path: str) -> str:
     """
     return os.path.abspath(os.path.expandvars(path))
 
-def createModal(title: str, tag: Union[str, int], content: Callable[[Any, ], None], data: Optional[Any] = None, canClose: bool = True):
+def createModal(title: str, tag: Union[str, int], content: Callable[[Any, ], None], data: Optional[Any] = None, canClose: bool = True, precisionResize: bool = False):
     """
     Creates and presents a model window belonging to the given parent.
 
@@ -31,6 +31,7 @@ def createModal(title: str, tag: Union[str, int], content: Callable[[Any, ], Non
     content: A function that declares the `dearpygui` elements for the modal. Must have at least one argument to receive `data`.
     data: Any data to pass to the content function.
     canClose: Whether the modal can be closed by the user using the window's "x" button.
+    precisionResize: If `True`, the modal will resize with added precision by skipping a frame then resizing. However, this can cause the program to freeze if done at startup.
     """
     # Ensure same frame
     with dpg.mutex():
@@ -53,7 +54,8 @@ def createModal(title: str, tag: Union[str, int], content: Callable[[Any, ], Non
             content(data)
 
     # Execute on the next frame
-    dpg.split_frame()
+    if precisionResize:
+        dpg.split_frame()
 
     # Get the alert size
     alertSize = (

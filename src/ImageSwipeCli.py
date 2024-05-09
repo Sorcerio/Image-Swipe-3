@@ -4,7 +4,7 @@
 # Imports
 import argparse
 
-from .implementations import SwipeLocal, SwipeLocalMulti
+from .implementations import *
 
 # Classes
 class ImageSwipeCli:
@@ -12,9 +12,10 @@ class ImageSwipeCli:
     Unified Command Line interface for Image Swipe 3.
     """
     # Constants
-    IMPLEMENTATIONS = [
+    IMPLEMENTATIONS = [ # TODO: Audtomate populating this list
         SwipeLocal,
-        SwipeLocalMulti
+        SwipeLocalMulti,
+        SwipeReddit
     ]
 
     # Functions
