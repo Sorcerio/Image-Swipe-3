@@ -5,7 +5,7 @@
 import os
 import argparse
 from enum import Enum
-from typing import Union, Any
+from typing import Union, Optional
 import dearpygui.dearpygui as dpg
 
 from .SwiperImplementation import SwiperImplementation
@@ -21,9 +21,9 @@ class PostSource(Enum):
     NEW = "new"
     TOP = "top"
 
-class PostTime(Enum):
+class PostTimeframe(Enum):
     """
-    The post time for Reddit post requests.
+    The post timeframe for Reddit post requests.
     """
     DAY = "day"
     WEEK = "week"
@@ -43,6 +43,7 @@ class SwipeReddit(SwiperImplementation):
     SIZE_SETUP = (404, 594)
 
     _TAG_SETUP_WINDOW = "redditSetupWindow"
+    _TAG_FORM_ISSUES_SUBWINDOW = "form_issuesSubwindow"
     _TAG_FORM_ISSUES_GROUP = "form_issuesGroup"
     _TAG_FORM_SUBREDDIT = "form_subreddit"
     _TAG_FORM_SOURCE = "form_source"
@@ -60,6 +61,9 @@ class SwipeReddit(SwiperImplementation):
         """
         # Record info
         self.debug = debug
+        self.subreddit: Optional[str] = None
+        self.source: Optional[PostSource] = None
+        self.timeframe: Optional[PostTimeframe] = None
 
         # Prepare the core
         self.core = ImageSwipeCore(
@@ -121,24 +125,95 @@ class SwipeReddit(SwiperImplementation):
             dpg.add_text("Select a subreddit to browse and what content to view.")
 
             # Add the issues group
-            dpg.add_child_window(tag=self._TAG_FORM_ISSUES_GROUP, show=False)
+            dpg.add_child_window(tag=self._TAG_FORM_ISSUES_SUBWINDOW, show=False, height=150)
 
             # Add input fields
             dpg.add_input_text(label="Subreddit", hint="r/pics", tag=self._TAG_FORM_SUBREDDIT)
             dpg.add_combo(label="Source", items=[src.value for src in PostSource], default_value=PostSource.HOT.value, tag=self._TAG_FORM_SOURCE)
-            dpg.add_combo(label="Timeframe", items=[time.value for time in PostTime], default_value=PostTime.DAY.value, tag=self._TAG_FORM_TIMEFRAME)
+            dpg.add_combo(label="Timeframe", items=[time.value for time in PostTimeframe], default_value=PostTimeframe.DAY.value, tag=self._TAG_FORM_TIMEFRAME)
 
             # Add the submit button
             dpg.add_button(label="Submit", tag=self._TAG_FORM_SUBMIT, callback=self.__submitFormCallback)
 
     # Callback Functions
+    def _validateForm(self, subreddit: str, source: PostSource, timeframe: PostTimeframe) -> Optional[list[str]]:
+        """
+        Validates the form.
+
+        subreddit: The subreddit to validate.
+        source: The `PostSource` source to validate.
+        timeframe: The `PostTimeframe` timeframe to validate.
+
+        Returns a list of errors or `None` if everything is valid.
+        """
+        # Prep errors
+        errors = []
+
+        # Check if the subreddit is valid
+        if not subreddit.startswith("r/"):
+            errors.append("Subreddit must start with \"r/\".")
+
+        # Check if the source is valid
+        if source not in PostSource:
+            errors.append("Invalid source.")
+
+        # Check if the timeframe is valid
+        if timeframe not in PostTimeframe:
+            errors.append("Invalid timeframe.")
+
+        # Send the right thing
+        if len(errors) > 0:
+            return errors
+        else:
+            return None
+
     def __submitFormCallback(self, sender: Union[int, str]):
         """
         Handles form submission.
 
         sender: The sender's tag.
         """
-        pass # TODO: this
+        # Get the form data
+        subreddit = dpg.get_value(self._TAG_FORM_SUBREDDIT)
+        source = PostSource(dpg.get_value(self._TAG_FORM_SOURCE))
+        timeframe = PostTimeframe(dpg.get_value(self._TAG_FORM_TIMEFRAME))
+
+        # Debug
+        if self.debug:
+            print(f"Subreddit: {subreddit}")
+            print(f"Source: {source}")
+            print(f"Timeframe: {timeframe}")
+
+        # Validate the form
+        if (errors := self._validateForm(subreddit, source, timeframe)) is not None:
+            # Clear existing errors
+            if dpg.does_item_exist(self._TAG_FORM_ISSUES_GROUP):
+                dpg.delete_item(self._TAG_FORM_ISSUES_GROUP)
+
+            # Show the issues subwindow
+            dpg.show_item(self._TAG_FORM_ISSUES_SUBWINDOW)
+
+            # Create the issues group
+            with dpg.group(tag=self._TAG_FORM_ISSUES_GROUP, parent=self._TAG_FORM_ISSUES_SUBWINDOW):
+                # Add the errors
+                for error in errors:
+                    dpg.add_text(error, bullet=True)
+
+            # Debug
+            if self.debug:
+                print(f"Form input unsuccessful: {', '.join(errors)}")
+
+            # Eject
+            return
+
+        # Close the setup window
+        dpg.hide_item(self._TAG_FORM_ISSUES_SUBWINDOW)
+        dpg.hide_item(self._TAG_SETUP_WINDOW)
+
+        # Record the inputs
+        self.subreddit = subreddit
+        self.source = source
+        self.timeframe = timeframe
 
 # Command Line
 if __name__ == "__main__":
