@@ -8,7 +8,7 @@ from typing import Union, Optional, Iterable, Callable, Any
 from random import choice
 import dearpygui.dearpygui as dpg
 
-from .ImageSwipeShared import ASSETS_DIR, fullpath, createConfirmationModal
+from .ImageSwipeShared import ASSETS_DIR, fullpath, createConfirmationModal, createAlertModal
 from .PercentageLayout import PercentageLayout
 from .TextureManager import TextureManager
 from .TextureModel import TextureModel
@@ -429,8 +429,7 @@ class ImageSwipeCore:
             self.presentImage(tags)
         else:
             # No more images
-            # TODO: Popup alert
-            print("No more images.")
+            self._showQueueCompleteAlert()
 
     def showNextImage(self):
         """
@@ -439,8 +438,7 @@ class ImageSwipeCore:
         # Check that there is a next image
         if ((self.__curImageIndex + self.iterPerAction) > len(self._images)):
             # No next image
-            # TODO: Handle if any images are left outside the scope of numbers available with the iterPerAction?
-            # TODO: Show a message or something? Callback?
+            self._showQueueCompleteAlert()
             return
 
         # Increment the index
@@ -462,7 +460,6 @@ class ImageSwipeCore:
         # Check that there is a previous image
         if ((self.__curImageIndex - self.iterPerAction) < 0):
             # No previous image
-            # TODO: Handle if any images are left outside the scope of numbers available with the iterPerAction
             return
 
         # Reduce the index
@@ -524,6 +521,22 @@ class ImageSwipeCore:
         # Trigger the button action
         if btn.callback is not None:
             btn.callback(btn.userData)
+
+    def _showQueueCompleteAlert(self):
+        """
+        Shows the alert indicating that the queue is complete.
+        """
+        # Debug
+        if self.debug:
+            print("Image Queue is complete.")
+
+        # Create the alert
+        createAlertModal(
+            "Image Queue Complete",
+            "All images have been sorted.",
+            buttonText="Quit",
+            onPress=(lambda : dpg.stop_dearpygui())
+        )
 
     # Callbacks
     def __viewportResizedCallback(self, sender: Union[int, str], size: tuple[int, int, int, int]):

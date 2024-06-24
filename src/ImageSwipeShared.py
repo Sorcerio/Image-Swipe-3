@@ -125,6 +125,48 @@ def createConfirmationModal(
         canClose=False
     )
 
+def createAlertModal(
+    title: str,
+    message: str,
+    buttonText: str = "Ok",
+    onPress: Optional[Callable[[], None]] = None
+):
+    """
+    Creates an alert modal window.
+
+    title: The title of the modal window.
+    message: The message to display to the user.
+    buttonText: The text to display on the confirm button.
+    onPress: The function to call when the user presses the button.
+    """
+    # Prepare a tag
+    tag = dpg.generate_uuid()
+
+    # Prepare the callback functions
+    def triggerOnPress(sender: Union[int, str]):
+        # Check if the confirm function is provided
+        if onPress is not None:
+            onPress()
+
+        # Close the modal
+        dpg.delete_item(tag)
+
+    # Prepare the content function
+    def alertContent(data: Any):
+        # Add the text
+        dpg.add_text(message)
+
+        # Add the button
+        dpg.add_button(label=buttonText, callback=triggerOnPress, width=-1)
+
+    # Create the modal
+    createModal(
+        title,
+        tag,
+        alertContent,
+        canClose=False
+    )
+
 def sanitizeFileName(s: str) -> str:
     """
     Sanitizes a given string so that it can be used as a component in a file path like a directory or file name.
