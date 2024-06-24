@@ -53,17 +53,23 @@ class SwipeReddit(SwiperImplementation):
     # Constructor
     def __init__(self,
         outputDir: str,
+        subreddit: Optional[str] = None,
+        source: Optional[PostSource] = None,
+        timeframe: Optional[PostTimeframe] = None,
         debug: bool = False
     ):
         """
         outputDir: The directory to place output directories in.
+        subreddit: The subreddit to prefill into the intial startup form.
+        source: The `PostSource` to prefill into the initial startup form.
+        timeframe: The `PostTimeframe` to prefill into the initial startup form.
         debug: If `True`, debug features will be enabled.
         """
         # Record info
         self.debug = debug
-        self.subreddit: Optional[str] = None
-        self.source: Optional[PostSource] = None
-        self.timeframe: Optional[PostTimeframe] = None
+        self.subreddit: Optional[str] = subreddit
+        self.source: Optional[PostSource] = source
+        self.timeframe: Optional[PostTimeframe] = timeframe
 
         # Prepare the core
         self.core = ImageSwipeCore(
@@ -79,7 +85,7 @@ class SwipeReddit(SwiperImplementation):
         # Display the core
         self.core.display(onFirstFrame=self.__onFirstFrame)
 
-    # Static Functions
+    # Class Functions
     @classmethod
     def fromArgs(cls, args: argparse.Namespace) -> 'SwipeReddit':
         """
@@ -89,11 +95,24 @@ class SwipeReddit(SwiperImplementation):
 
         Returns the new instance.
         """
+        # Check if the subreddit is valid
+        if (args.subreddit is not None) and (not args.subreddit.startswith("r/")):
+            raise ValueError("Subreddit must start with \"r/\".")
+
+        # Check if the source and timeframe are valid
+        source = PostSource(args.source) if (args.source is not None) else None
+        timeframe = PostTimeframe(args.timeframe) if (args.timeframe is not None) else None
+
+        # Create the instance
         return cls(
             args.output,
+            subreddit=args.subreddit,
+            source=source,
+            timeframe=timeframe,
             debug=args.debug
         )
 
+    # Static Functions
     @staticmethod
     def buildParser(parser: argparse.ArgumentParser):
         """
@@ -105,38 +124,12 @@ class SwipeReddit(SwiperImplementation):
         parser.add_argument("output", type=str, help="The directory to place output directories in.")
 
         # Add optional arguments
+        parser.add_argument("-r", "--subreddit", help="A subreddit to prefill into the intial startup form.", type=str, default=None)
+        parser.add_argument("-s", "--source", help="A source to prefill into the intial startup form.", type=str, choices=[c.name.lower() for c in PostSource], default=PostSource.HOT.name.lower())
+        parser.add_argument("-t", "--timeframe", help="A timeframe to prefill into the intial startup form.", type=str, choices=[c.name.lower() for c in PostTimeframe], default=PostTimeframe.DAY.name.lower())
         parser.add_argument("--debug", help="If provided, enables debug mode.", action="store_true")
 
-    # Private Functions
-    def __onFirstFrame(self):
-        """
-        Triggered by `core` on the first frame after starting the interface.
-        """
-        # Create the setup window
-        with dpg.window(
-            label="Subreddit Selection",
-            tag=self._TAG_SETUP_WINDOW,
-            width=self.SIZE_SETUP[0],
-            height=self.SIZE_SETUP[1],
-            autosize=True,
-            no_close=True
-        ):
-            # Add instructions
-            dpg.add_text("Select a subreddit to browse and what content to view.")
-
-            # Add the issues group
-            dpg.add_child_window(tag=self._TAG_FORM_ISSUES_SUBWINDOW, show=False, height=150)
-
-            # Add input fields
-            dpg.add_input_text(label="Subreddit", hint="r/pics", tag=self._TAG_FORM_SUBREDDIT)
-            dpg.add_combo(label="Source", items=[src.value for src in PostSource], default_value=PostSource.HOT.value, tag=self._TAG_FORM_SOURCE)
-            dpg.add_combo(label="Timeframe", items=[time.value for time in PostTimeframe], default_value=PostTimeframe.DAY.value, tag=self._TAG_FORM_TIMEFRAME)
-
-            # Add the submit button
-            dpg.add_button(label="Submit", tag=self._TAG_FORM_SUBMIT, callback=self.__submitFormCallback)
-
-    # Callback Functions
-    def _validateForm(self, subreddit: str, source: PostSource, timeframe: PostTimeframe) -> Optional[list[str]]:
+    def _validateForm(subreddit: str, source: PostSource, timeframe: PostTimeframe) -> Optional[list[str]]:
         """
         Validates the form.
 
@@ -167,6 +160,50 @@ class SwipeReddit(SwiperImplementation):
         else:
             return None
 
+    # Private Functions
+    def __onFirstFrame(self):
+        """
+        Triggered by `core` on the first frame after starting the interface.
+        """
+        # Create the setup window
+        with dpg.window(
+            label="Subreddit Selection",
+            tag=self._TAG_SETUP_WINDOW,
+            width=self.SIZE_SETUP[0],
+            height=self.SIZE_SETUP[1],
+            autosize=True,
+            no_close=True
+        ):
+            # Add instructions
+            dpg.add_text("Select a subreddit to browse and what content to view.")
+
+            # Add the issues group
+            dpg.add_child_window(tag=self._TAG_FORM_ISSUES_SUBWINDOW, show=False, height=150)
+
+            # Add input fields
+            dpg.add_input_text(
+                label="Subreddit",
+                hint="r/pics",
+                default_value=(self.subreddit if (self.subreddit is not None) else ""),
+                tag=self._TAG_FORM_SUBREDDIT
+            )
+            dpg.add_combo(
+                label="Source",
+                items=[src.value for src in PostSource],
+                default_value=(self.source.value if (self.source is not None) else PostSource.HOT.value),
+                tag=self._TAG_FORM_SOURCE
+            )
+            dpg.add_combo(
+                label="Timeframe",
+                items=[time.value for time in PostTimeframe],
+                default_value=(self.timeframe.value if (self.timeframe is not None) else PostTimeframe.DAY.value),
+                tag=self._TAG_FORM_TIMEFRAME
+            )
+
+            # Add the submit button
+            dpg.add_button(label="Submit", tag=self._TAG_FORM_SUBMIT, callback=self.__submitFormCallback)
+
+    # Callback Functions
     def __submitFormCallback(self, sender: Union[int, str]):
         """
         Handles form submission.
@@ -185,7 +222,7 @@ class SwipeReddit(SwiperImplementation):
             print(f"Timeframe: {timeframe}")
 
         # Validate the form
-        if (errors := self._validateForm(subreddit, source, timeframe)) is not None:
+        if (errors := SwipeReddit._validateForm(subreddit, source, timeframe)) is not None:
             # Clear existing errors
             if dpg.does_item_exist(self._TAG_FORM_ISSUES_GROUP):
                 dpg.delete_item(self._TAG_FORM_ISSUES_GROUP)

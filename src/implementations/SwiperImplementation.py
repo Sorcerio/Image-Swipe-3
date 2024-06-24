@@ -20,7 +20,7 @@ class SwiperImplementation:
         """
         raise NotImplementedError("This implementation does not support a user interface.")
 
-    # Static Functions
+    # Class Functions
     @classmethod
     def fromArgs(cls, args: argparse.Namespace) -> 'SwiperImplementation':
         """
@@ -32,6 +32,7 @@ class SwiperImplementation:
         """
         raise NotImplementedError("This implementation does not support creation from command line arguments.")
 
+    # Static Functions
     @staticmethod
     def buildParser(parser: argparse.ArgumentParser):
         """
