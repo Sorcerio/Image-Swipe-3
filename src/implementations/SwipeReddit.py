@@ -129,6 +129,7 @@ class SwipeReddit(SwiperImplementation):
         parser.add_argument("-t", "--timeframe", help="A timeframe to prefill into the intial startup form.", type=str, choices=[c.name.lower() for c in PostTimeframe], default=PostTimeframe.DAY.name.lower())
         parser.add_argument("--debug", help="If provided, enables debug mode.", action="store_true")
 
+    @staticmethod
     def _validateForm(subreddit: str, source: PostSource, timeframe: PostTimeframe) -> Optional[list[str]]:
         """
         Validates the form.
@@ -222,7 +223,7 @@ class SwipeReddit(SwiperImplementation):
             print(f"Timeframe: {timeframe}")
 
         # Validate the form
-        if (errors := SwipeReddit._validateForm(subreddit, source, timeframe)) is not None:
+        if (errors := self._validateForm(subreddit, source, timeframe)) is not None:
             # Clear existing errors
             if dpg.does_item_exist(self._TAG_FORM_ISSUES_GROUP):
                 dpg.delete_item(self._TAG_FORM_ISSUES_GROUP)
@@ -251,6 +252,8 @@ class SwipeReddit(SwiperImplementation):
         self.subreddit = subreddit
         self.source = source
         self.timeframe = timeframe
+
+        # TODO: Load first page of posts with images
 
 # Command Line
 if __name__ == "__main__":
