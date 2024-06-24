@@ -382,7 +382,6 @@ class ImageSwipeCore:
 
         # Add sized images
         padding = 10
-        # for parent, tag in zip(contentTags, tags):
         for i, parent, tag in zip(tuple(range(len(contentTags))), contentTags, tags):
             # Get the parent size
             parentSize = dpg.get_item_rect_size(parent)
@@ -423,13 +422,15 @@ class ImageSwipeCore:
         """
         Presents the current image and handles display of multiple images if applicable.
         """
-        # Decide if multiple images should be displayed
-        if (self.imgPerDisplay > 1) and ((self.__curImageIndex + self.imgPerDisplay) < len(self._images)):
-            # Display multiple
-            self.presentImage([img.tag for img in self._images[self.__curImageIndex:self.__curImageIndex + self.imgPerDisplay]])
+        # Check if tags are present
+        tags = tuple(img.tag for img in self._images[self.__curImageIndex:self.__curImageIndex + self.imgPerDisplay])
+        if tags:
+            # Present the images
+            self.presentImage(tags)
         else:
-            # Display single
-            self.presentImage(self._images[self.__curImageIndex].tag)
+            # No more images
+            # TODO: Popup alert
+            print("No more images.")
 
     def showNextImage(self):
         """
