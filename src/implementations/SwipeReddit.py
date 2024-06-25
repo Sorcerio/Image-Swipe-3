@@ -8,7 +8,6 @@ import argparse
 from enum import Enum
 from typing import Union, Optional, Any
 
-import requests
 import dearpygui.dearpygui as dpg
 
 from .SwiperImplementation import SwiperImplementation
@@ -64,7 +63,7 @@ class SwipeReddit(SwiperImplementation):
         source: Optional[PostSource] = None,
         timeframe: Optional[PostTimeframe] = None,
         perPageLimit: int = 3,
-        keepCache: bool = True, # TODO: Disable and make as a CLI arg
+        keepCache: bool = False, # TODO: Disable and make as a CLI arg
         debug: bool = False
     ):
         """
