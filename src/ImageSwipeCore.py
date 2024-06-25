@@ -39,6 +39,7 @@ class ImageSwipeCore:
         preloadBuffer: int = 3,
         imgPerDisplay: int = 1,
         iterPerAction: int = 1,
+        onQueueComplete: Optional[Callable[[None], None]] = None,
         debug: bool = False
     ):
         """
@@ -48,12 +49,16 @@ class ImageSwipeCore:
         preloadBuffer: The number of images to preload around the current image.
         imgPerDisplay: The number of images to display at once.
         iterPerAction: The amount that the image index should be incremented by for each action.
+        onQueueComplete: A function to call when the queue is complete. If `None`, a default alert will be shown.
         debug: If `True`, debug features will be enabled.
         """
         # Assign data
         self.debug = debug
         self.outputDir = fullpath(outputDir)
         self.preloadBuffer = preloadBuffer
+        self.onQueueComplete = onQueueComplete
+
+        self._queueStarted = False
 
         # Setup image per display
         if imgPerDisplay < 1:
@@ -232,6 +237,9 @@ class ImageSwipeCore:
 
         # Present the image
         self.presentCurrentImage()
+
+        # Mark as started
+        self._queueStarted = True
 
     # UI Functions
     def _buildToolbar(self):
@@ -429,7 +437,7 @@ class ImageSwipeCore:
             self.presentImage(tags)
         else:
             # No more images
-            self._showQueueCompleteAlert()
+            self._triggerQueueComplete()
 
     def showNextImage(self):
         """
@@ -438,7 +446,7 @@ class ImageSwipeCore:
         # Check that there is a next image
         if ((self.__curImageIndex + self.iterPerAction) > len(self._images)):
             # No next image
-            self._showQueueCompleteAlert()
+            self._triggerQueueComplete()
             return
 
         # Increment the index
@@ -522,21 +530,32 @@ class ImageSwipeCore:
         if btn.callback is not None:
             btn.callback(btn.userData)
 
-    def _showQueueCompleteAlert(self):
+    def _createQueueCompleteAlert(self):
         """
-        Shows the alert indicating that the queue is complete.
+        Creates the alert indicating that the queue is complete.
         """
-        # Debug
-        if self.debug:
-            print("Image Queue is complete.")
-
-        # Create the alert
         createAlertModal(
             "Image Queue Complete",
             "All images have been sorted.",
             buttonText="Quit",
             onPress=(lambda : dpg.stop_dearpygui())
         )
+
+    def _triggerQueueComplete(self):
+        """
+        Triggers the supplied queue complete callback or shows the alert indicating that the queue is complete if no callback exists.
+        """
+        # Debug
+        if self.debug:
+            print("Image Queue is complete.")
+
+        # Check if there is a callback
+        if self.onQueueComplete is not None:
+            # Call the callback
+            self.onQueueComplete()
+        else:
+            # Create the queue complete alert
+            self._createQueueCompleteAlert()
 
     # Callbacks
     def __viewportResizedCallback(self, sender: Union[int, str], size: tuple[int, int, int, int]):

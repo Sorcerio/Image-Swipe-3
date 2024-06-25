@@ -15,6 +15,7 @@ from .SwiperImplementation import SwiperImplementation
 from ..ImageSwipeShared import fullpath, createModal
 from ..ImageSwipeCore import ImageSwipeCore
 from ..QuickRequests import QuickRequests
+from ..TextureModel import TextureModel
 
 # Enums
 class PostSource(Enum):
@@ -62,7 +63,7 @@ class SwipeReddit(SwiperImplementation):
         subreddit: Optional[str] = None,
         source: Optional[PostSource] = None,
         timeframe: Optional[PostTimeframe] = None,
-        perPageLimit: int = 3, # TODO: Set to 25? # TODO: This is broken. Need a diff keyword!
+        perPageLimit: int = 3,
         keepCache: bool = True, # TODO: Disable and make as a CLI arg
         debug: bool = False
     ):
@@ -107,6 +108,7 @@ class SwipeReddit(SwiperImplementation):
         # Prepare the core
         self.core = ImageSwipeCore(
             outputDir,
+            onQueueComplete=self.__fetchNextPageCallback,
             debug=debug
         )
 
@@ -146,8 +148,6 @@ class SwipeReddit(SwiperImplementation):
 
         afterPost: A post ID to fetch posts after.
         """
-        # TODO: Fetch the page of posts, sort for ones with an image (or gallery), cache locally, and add to queue
-
         # Request the page data
         reqEndpoint = self.toRedditEndpoint(self.subreddit, self.source, self.timeframe, afterId=afterPost, limit=self.perPageLimit)
 
@@ -164,9 +164,17 @@ class SwipeReddit(SwiperImplementation):
 
         # Download the posts
         imgPaths = self.processPosts(respData["data"]["children"])
-        print(imgPaths)
 
-        # TODO: Add to the queue
+        # Debug
+        if self.debug:
+            print(f"Collected {len(imgPaths)} image paths: {imgPaths}")
+
+        # Add to the queue
+        self.core.addImagesToQueue([TextureModel(path, os.path.basename(path).replace(".", "_")) for path in imgPaths])
+
+        # Get the current image
+        if self.core._queueStarted:
+            self.core.showNextImage()
 
     def processPosts(self, posts: list[dict[str, Any]]) -> tuple[str]:
         """
@@ -459,6 +467,22 @@ class SwipeReddit(SwiperImplementation):
 
         # Fetch the first page
         self.fetchPage()
+
+        # Start the queue
+        self.core.startQueue()
+
+    def __fetchNextPageCallback(self):
+        """
+        Callback for fetching the next page.
+        """
+        # Check if a last post id exists
+        if self.__lastPostId is not None:
+            # Fetch the next page
+            self.fetchPage(self.__lastPostId)
+        else:
+            # Show the complete alert
+            print("No more posts to fetch.")
+            self.core._createQueueCompleteAlert()
 
 # Command Line
 if __name__ == "__main__":
