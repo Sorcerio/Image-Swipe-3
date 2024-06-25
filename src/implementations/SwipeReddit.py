@@ -3,6 +3,7 @@
 
 # Imports
 import os
+import tempfile
 import argparse
 from enum import Enum
 from typing import Union, Optional, Any
@@ -62,6 +63,7 @@ class SwipeReddit(SwiperImplementation):
         source: Optional[PostSource] = None,
         timeframe: Optional[PostTimeframe] = None,
         perPageLimit: int = 3, # TODO: Set to 25? # TODO: This is broken. Need a diff keyword!
+        keepCache: bool = True, # TODO: Disable and make as a CLI arg
         debug: bool = False
     ):
         """
@@ -70,16 +72,25 @@ class SwipeReddit(SwiperImplementation):
         source: The `PostSource` to prefill into the initial startup form.
         timeframe: The `PostTimeframe` to prefill into the initial startup form.
         perPageLimit: The maximum number of items to fetch per page.
+        keepCache: If `True`, the temporary cache will be kept after the program ends.
         debug: If `True`, debug features will be enabled.
         """
+        # Create the output directory
+        outputDir = fullpath(outputDir)
+        os.makedirs(outputDir, exist_ok=True)
+
         # Record info
         self.debug = debug
+        self.keepCache = keepCache
+
         self.subreddit: Optional[str] = subreddit
         self.source: Optional[PostSource] = source
         self.timeframe: Optional[PostTimeframe] = timeframe
 
         self._urlRequester = QuickRequests(baseUrl=self.BASE_URL)
         self._urlRequester.USER_AGENT = "Desktop:ImageSwipe:0.0.1 (by u/mtufo)"
+
+        self._tempDir = tempfile.TemporaryDirectory(dir=outputDir) # .name for path
 
         self.__lastPostId = None
 
@@ -95,9 +106,31 @@ class SwipeReddit(SwiperImplementation):
 
         # Prepare the core
         self.core = ImageSwipeCore(
-            fullpath(outputDir),
+            outputDir,
             debug=debug
         )
+
+    # Python Functions
+    def __del__(self):
+        """
+        Cleans up temporary files.
+        """
+        # Check if not keeping the cache
+        if not self.keepCache:
+            # Remove the temp directory
+            self._tempDir.cleanup()
+
+            # Check if the output dir is empty
+            if len(os.listdir(self.core.outputDir)) == 0:
+                # Remove the output directory
+                os.rmdir(self.core.outputDir)
+
+            # Debug
+            if self.debug:
+                print("Cleaned temporary cache directory.")
+        elif self.debug:
+            # Debug
+            print(f"Cache directory: {self._tempDir.name}")
 
     # Functions
     def display(self):
@@ -131,8 +164,9 @@ class SwipeReddit(SwiperImplementation):
 
         # Download the posts
         imgPaths = self.processPosts(respData["data"]["children"])
+        print(imgPaths)
 
-        # # TODO: Add to the queue
+        # TODO: Add to the queue
 
     def processPosts(self, posts: list[dict[str, Any]]) -> tuple[str]:
         """
@@ -152,27 +186,61 @@ class SwipeReddit(SwiperImplementation):
             if ("is_gallery" in postData) and postData["is_gallery"]:
                 # Multiple images
                 imgUrls = [self.previewUrlToFullUrl(item["s"]["u"]) for item in postData["media_metadata"].values()]
+                imgUrls = {url.split("/")[-1]: url for url in imgUrls}
                 paths.extend(self.downloadImages(imgUrls))
+
+                # Debug
+                if self.debug:
+                    print(f"Collected {len(imgUrls)} images from {postData['name']}.")
             elif "preview" in postData:
                 # Single image
                 imgUrl = self.previewUrlToFullUrl(postData["preview"]["images"][0]["source"]["url"])
-                paths.append(self.downloadImages([imgUrl])[0])
+                paths.append(self.downloadImages({
+                    imgUrl.split("/")[-1]: imgUrl
+                })[0])
+
+                # Debug
+                if self.debug:
+                    print(f"Collected 1 image from {postData['name']}.")
             elif self.debug:
                 # Debug
                 print(f"{postData['name']} has no images. Skipped.")
 
         return tuple(paths)
 
-    def downloadImages(self, imgUrls: list[str]) -> tuple[str]:
+    def downloadImages(self, imgUrls: dict[str, str]) -> tuple[str]:
         """
         Downloads the given images.
 
-        imgUrls: The list of image urls to download.
+        imgUrls: A dict of unique image filenames with extension and urls to download from like `{"image1.jpg": "https://example.com/image1.jpg"}`.
 
-        Returns a list of the absolute paths to the downloaded images.
+        Returns a tuple of the absolute paths to the downloaded images.
         """
-        # TODO: Download the images
-        return imgUrls
+        # Loop through the urls
+        urlPaths = []
+        for imgFilename, imgUrl in imgUrls.items():
+            # Request the image
+            imgResp = self._urlRequester._makeRequest(False, imgUrl, None)
+
+            # Build the path
+            imgPath = os.path.join(self._tempDir.name, imgFilename)
+
+            # Get the image data
+            with open(imgPath, "wb") as imgFile:
+                imgFile.write(imgResp.content)
+
+            # Debug
+            if self.debug:
+                print(f"Downloaded {imgFilename} to: {imgPath}")
+
+            # Add to the list
+            urlPaths.append(imgPath)
+
+        # Debug
+        if self.debug:
+            print(f"Downloaded {len(imgUrls)} images.")
+
+        return tuple(urlPaths)
 
     # Class Functions
     @classmethod
@@ -270,7 +338,7 @@ class SwipeReddit(SwiperImplementation):
         Returns the Reddit endpoint.
         """
         # Build the root url
-        url = f"{subreddit}/{source.value}.json?t={timeframe.value}&count={limit}"
+        url = f"{subreddit}/{source.value}.json?t={timeframe.value}&limit={limit}"
 
         # Check if an after ID is provided
         if (afterId is not None) and (afterId.strip() != ""):
