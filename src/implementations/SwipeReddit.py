@@ -5,12 +5,15 @@
 import os
 import argparse
 from enum import Enum
-from typing import Union, Optional
+from typing import Union, Optional, Any
+
+import requests
 import dearpygui.dearpygui as dpg
 
 from .SwiperImplementation import SwiperImplementation
 from ..ImageSwipeShared import fullpath, createModal
 from ..ImageSwipeCore import ImageSwipeCore
+from ..QuickRequests import QuickRequests
 
 # Enums
 class PostSource(Enum):
@@ -40,6 +43,8 @@ class SwipeReddit(SwiperImplementation):
     CLI_PROG = "reddit"
     CLI_DESC = "Browse images from a subreddit."
 
+    BASE_URL = "https://www.reddit.com"
+
     SIZE_SETUP = (404, 594)
 
     _TAG_SETUP_WINDOW = "redditSetupWindow"
@@ -56,7 +61,7 @@ class SwipeReddit(SwiperImplementation):
         subreddit: Optional[str] = None,
         source: Optional[PostSource] = None,
         timeframe: Optional[PostTimeframe] = None,
-        perPageLimit: int = 3, # TODO: Set to 25?
+        perPageLimit: int = 3, # TODO: Set to 25? # TODO: This is broken. Need a diff keyword!
         debug: bool = False
     ):
         """
@@ -72,6 +77,9 @@ class SwipeReddit(SwiperImplementation):
         self.subreddit: Optional[str] = subreddit
         self.source: Optional[PostSource] = source
         self.timeframe: Optional[PostTimeframe] = timeframe
+
+        self._urlRequester = QuickRequests(baseUrl=self.BASE_URL)
+        self._urlRequester.USER_AGENT = "Desktop:ImageSwipe:0.0.1 (by u/mtufo)"
 
         self.__lastPostId = None
 
@@ -106,7 +114,65 @@ class SwipeReddit(SwiperImplementation):
         afterPost: A post ID to fetch posts after.
         """
         # TODO: Fetch the page of posts, sort for ones with an image (or gallery), cache locally, and add to queue
-        print(self.toRedditUrl(self.subreddit, self.source, self.timeframe, limit=self.perPageLimit))
+
+        # Request the page data
+        reqEndpoint = self.toRedditEndpoint(self.subreddit, self.source, self.timeframe, afterId=afterPost, limit=self.perPageLimit)
+
+        if self.debug:
+            print(f"Requesting endpoint: {reqEndpoint}")
+
+        resp = self._urlRequester.apiGet(reqEndpoint)
+
+        # Get the data
+        respData = resp.json()
+
+        # Get the last post id
+        self.__lastPostId = respData["data"]["after"]
+
+        # Download the posts
+        imgPaths = self.processPosts(respData["data"]["children"])
+
+        # # TODO: Add to the queue
+
+    def processPosts(self, posts: list[dict[str, Any]]) -> tuple[str]:
+        """
+        Processes the given posts for images.
+
+        posts: The list of posts to process.
+
+        Returns a tuple of the absolute paths to the downloaded images.
+        """
+        # Loop through the posts
+        paths = []
+        for postData in posts:
+            # Deeper
+            postData = postData["data"]
+
+            # Check for post type
+            if ("is_gallery" in postData) and postData["is_gallery"]:
+                # Multiple images
+                imgUrls = [self.previewUrlToFullUrl(item["s"]["u"]) for item in postData["media_metadata"].values()]
+                paths.extend(self.downloadImages(imgUrls))
+            elif "preview" in postData:
+                # Single image
+                imgUrl = self.previewUrlToFullUrl(postData["preview"]["images"][0]["source"]["url"])
+                paths.append(self.downloadImages([imgUrl])[0])
+            elif self.debug:
+                # Debug
+                print(f"{postData['name']} has no images. Skipped.")
+
+        return tuple(paths)
+
+    def downloadImages(self, imgUrls: list[str]) -> tuple[str]:
+        """
+        Downloads the given images.
+
+        imgUrls: The list of image urls to download.
+
+        Returns a list of the absolute paths to the downloaded images.
+        """
+        # TODO: Download the images
+        return imgUrls
 
     # Class Functions
     @classmethod
@@ -185,7 +251,7 @@ class SwipeReddit(SwiperImplementation):
             return None
 
     @staticmethod
-    def toRedditUrl(
+    def toRedditEndpoint(
         subreddit: str,
         source: PostSource,
         timeframe: PostTimeframe,
@@ -193,7 +259,7 @@ class SwipeReddit(SwiperImplementation):
         limit: int = 25,
     ) -> str:
         """
-        Produces a request URL for the given information.
+        Produces a Reddit endpoint for the given information.
 
         subreddit: The subreddit to request from including `r/`.
         source: The `PostSource` source to request from.
@@ -201,16 +267,35 @@ class SwipeReddit(SwiperImplementation):
         afterId: The ID of the post to request after for pagination. If `None`, pagination will start from the most recent post in the `timeframe`.
         limit: The maximum number of posts to return.
 
-        Returns the request URL.
+        Returns the Reddit endpoint.
         """
         # Build the root url
-        url = f"https://www.reddit.com/{subreddit}/{source.value}.json?t={timeframe.value}&count={limit}"
+        url = f"{subreddit}/{source.value}.json?t={timeframe.value}&count={limit}"
 
         # Check if an after ID is provided
-        if afterId is not None:
+        if (afterId is not None) and (afterId.strip() != ""):
             url += f"&after={afterId}"
 
         return url
+
+    @staticmethod
+    def previewUrlToFullUrl(inUrl: str) -> str:
+        """
+        Converts a Reddit preview url to a url that actually serves the image.
+
+        inUrl: A Reddit preview url like `preview.redd.it/...?etc=foo`
+
+        Returns a full url.
+        """
+        # Check if the url is a Reddit preview url
+        if "preview.redd.it" not in inUrl:
+            return inUrl
+
+        # Extract the image id
+        imgId = inUrl.split("/")[-1].split("?")[0]
+
+        # Build the full url
+        return f"https://i.redd.it/{imgId}"
 
     # Private Functions
     def __onFirstFrame(self):
