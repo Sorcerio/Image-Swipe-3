@@ -12,7 +12,7 @@ import requests
 import dearpygui.dearpygui as dpg
 
 from .SwiperImplementation import SwiperImplementation
-from ..ImageSwipeShared import fullpath, createModal
+from ..ImageSwipeShared import fullpath, createLoadingModal
 from ..ImageSwipeCore import ImageSwipeCore
 from ..QuickRequests import QuickRequests
 from ..TextureModel import TextureModel
@@ -148,6 +148,9 @@ class SwipeReddit(SwiperImplementation):
 
         afterPost: A post ID to fetch posts after.
         """
+        # Create the loading modal
+        loaderTag = createLoadingModal("Fetching Content", f"Collecting the next {self.perPageLimit} posts...")
+
         # Request the page data
         reqEndpoint = self.toRedditEndpoint(self.subreddit, self.source, self.timeframe, afterId=afterPost, limit=self.perPageLimit)
 
@@ -175,6 +178,9 @@ class SwipeReddit(SwiperImplementation):
         # Get the current image
         if self.core._queueStarted:
             self.core.showNextImage()
+
+        # Close the loading modal
+        dpg.delete_item(loaderTag)
 
     def processPosts(self, posts: list[dict[str, Any]]) -> tuple[str]:
         """

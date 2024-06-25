@@ -76,7 +76,7 @@ def createConfirmationModal(
     cancelText: str = "Cancel",
     onConfirm: Optional[Callable[[], None]] = None,
     onCancel: Optional[Callable[[], None]] = None
-):
+) -> Union[str, int]:
     """
     Creates a confirmation modal window.
 
@@ -125,12 +125,14 @@ def createConfirmationModal(
         canClose=False
     )
 
+    return tag
+
 def createAlertModal(
     title: str,
     message: str,
     buttonText: str = "Ok",
     onPress: Optional[Callable[[], None]] = None
-):
+) -> Union[str, int]:
     """
     Creates an alert modal window.
 
@@ -166,6 +168,35 @@ def createAlertModal(
         alertContent,
         canClose=False
     )
+
+    return tag
+
+def createLoadingModal(title: str, message: str) -> Union[str, int]:
+    """
+    Creates a loading modal window.
+
+    title: The title of the modal window.
+    message: The message to display to the user.
+
+    Returns the tag of the modal.
+    """
+    # Prepare a tag
+    tag = dpg.generate_uuid()
+
+    # Prepare the content function
+    def loadingContent(data: Any):
+        dpg.add_loading_indicator(style=0)
+        dpg.add_text(message)
+
+    # Create the modal
+    createModal(
+        title,
+        tag,
+        loadingContent,
+        canClose=False
+    )
+
+    return tag
 
 def sanitizeFileName(s: str) -> str:
     """
