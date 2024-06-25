@@ -34,7 +34,7 @@ class QuickRequests:
 
         Returns the `requests` Response object.
         """
-        return self.__makeRequest(False, endpoint, reqArgs, expectedStatus=expectedStatus)
+        return self._makeRequest(False, f"{self.baseUrl}/{endpoint}", reqArgs, expectedStatus=expectedStatus)
 
     def apiPost(self, endpoint: str, reqArgs: Optional[dict[str, Any]] = None, expectedStatus: Optional[int] = 200) -> requests.Response:
         """
@@ -46,12 +46,12 @@ class QuickRequests:
 
         Returns the `requests` Response object.
         """
-        return self.__makeRequest(True, endpoint, reqArgs, expectedStatus=expectedStatus)
+        return self._makeRequest(True, f"{self.baseUrl}/{endpoint}", reqArgs, expectedStatus=expectedStatus)
 
     # Private Functions
-    def __makeRequest(self,
+    def _makeRequest(self,
         isPost: bool,
-        endpoint: str,
+        url: str,
         reqArgs: Optional[dict[str, Any]],
         expectedStatus: Optional[int] = 200
     ) -> requests.Response:
@@ -59,15 +59,12 @@ class QuickRequests:
         Makes an API GET Request to the given endpoint.
 
         isPost: If `True`, the request will be a POST request. Otherwise, it will be a GET request.
-        endpoint: The endpoint to make API requests to. For example, `sdapi/v1/img2img`.
+        url: The complete url to make the request to. Example: `https://example.com/sdapi/v1/img2img`.
         reqArgs: A dict of arguments to pass to the `requests.get()` function.
         expectedStatus: The expected status code of the request. If supplied and the request returns a different status code, a `requests.exceptions.HTTPError` error will be raised. If `None` is supplied, no error will be raised for any status code.
 
         Returns the `requests` Response object.
         """
-        # Build the URL
-        url = f"{self.baseUrl}/{endpoint}"
-
         # Scope the request arguments
         if reqArgs == None:
             reqArgs = {}
