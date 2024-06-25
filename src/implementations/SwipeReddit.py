@@ -9,6 +9,7 @@ from time import time
 from enum import Enum
 from typing import Union, Optional, Any
 
+import requests
 import dearpygui.dearpygui as dpg
 
 from .SwiperImplementation import SwiperImplementation
@@ -64,7 +65,7 @@ class SwipeReddit(SwiperImplementation):
         subreddit: Optional[str] = None,
         source: Optional[PostSource] = None,
         timeframe: Optional[PostTimeframe] = None,
-        perPageLimit: int = 3,
+        perPageLimit: int = 8,
         keepCache: bool = False, # TODO: Disable and make as a CLI arg
         debug: bool = False
     ):
@@ -200,7 +201,7 @@ class SwipeReddit(SwiperImplementation):
             print(f"Collected {len(imgPaths)} image paths: {imgPaths}")
 
         # Add the images to the queue
-        self.core.addImagesToQueue([TextureModel(path, f"{os.path.basename(path).replace('.', '_')}_{time()}") for path in imgPaths])
+        self.core.addImagesToQueue([TextureModel(path, f"{os.path.basename(path).replace('.', '_')}_{int(time())}") for path in imgPaths])
 
         # Get the current image
         if self.core._queueStarted:
@@ -242,24 +243,24 @@ class SwipeReddit(SwiperImplementation):
 
                 # Download the images
                 imgUrls = {url.split("/")[-1]: url for url in imgUrls}
-                paths.extend(self.downloadImages(imgUrls))
-
-                # Debug
-                if self.debug:
-                    print(f"Collected {len(imgUrls)} images from {postData['name']}.")
+                imgPaths = self.downloadImages(imgUrls)
             elif "preview" in postData:
                 # Single image
                 imgUrl = self.previewUrlToFullUrl(postData["preview"]["images"][0]["source"]["url"])
-                paths.append(self.downloadImages({
-                    imgUrl.split("/")[-1]: imgUrl
-                })[0])
+                imgPaths = self.downloadImages({imgUrl.split("/")[-1]: imgUrl})
+            elif self.debug:
+                # Debug
+                imgPaths = None
+                print(f"{postData['name']} has no images. Skipped.")
+
+            # Check if paths were returned
+            if (imgPaths is not None) and (len(imgPaths) > 0):
+                # Add the paths
+                paths.extend(imgPaths)
 
                 # Debug
                 if self.debug:
-                    print(f"Collected 1 image from {postData['name']}.")
-            elif self.debug:
-                # Debug
-                print(f"{postData['name']} has no images. Skipped.")
+                    print(f"Collected {len(imgPaths)} image(s) from {postData['name']}.")
 
         return tuple(paths)
 
@@ -275,7 +276,16 @@ class SwipeReddit(SwiperImplementation):
         urlPaths = []
         for imgFilename, imgUrl in imgUrls.items():
             # Request the image
-            imgResp = self._urlRequester._makeRequest(False, imgUrl, None)
+            try:
+                # Make the request
+                imgResp = self._urlRequester._makeRequest(False, imgUrl, None)
+            except requests.exceptions.HTTPError as err:
+                # Debug
+                if self.debug:
+                    print(f"Failed to download {imgFilename} from {imgUrl}.")
+
+                # Skip
+                continue
 
             # Build the path
             imgPath = os.path.join(self._tempDir.name, imgFilename)
