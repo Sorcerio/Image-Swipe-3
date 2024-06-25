@@ -266,6 +266,7 @@ class ImageSwipeCore:
                     dpg.add_separator()
                     dpg.add_menu_item(label="Display Random Image", callback=(lambda : self.presentImage(choice(self._textureManager._textures))))
                     dpg.add_menu_item(label="List Current Images", callback=(lambda : print(f"Images: {self.getPresentedImages()}")))
+                    dpg.add_menu_item(label="List Current Texture Tags", callback=(lambda : print(f"Texture Tags: {self._textureManager._textures}")))
 
     def _buildMainWindow(self):
         """
@@ -329,6 +330,7 @@ class ImageSwipeCore:
             self._loadImageToCache(self._images[self.__curImageIndex])
 
         # Load images for buffer length in both directions
+        firstLoadedIndex = None
         for i in range(1, self.preloadBuffer + 1):
             # Forward
             if ((self.__curImageIndex + i) < queueLength):
@@ -336,9 +338,14 @@ class ImageSwipeCore:
 
             # Backward
             if ((self.__curImageIndex - i) >= 0):
+                firstLoadedIndex = (self.__curImageIndex - i)
                 self._loadImageToCache(self._images[self.__curImageIndex - i])
 
-        # TODO: Unload images that are no longer relevant taking into account backwards travel?
+        # Check if there are unloadable textures
+        if (firstLoadedIndex is not None) and (firstLoadedIndex > 0):
+            # Unload images before the first loaded index
+            for i in range(0, firstLoadedIndex):
+                self._removeImageFromCache(self._images[i].tag)
 
     def _loadImageToCache(self, image: TextureModel):
         """
@@ -354,6 +361,21 @@ class ImageSwipeCore:
         if (image.tag not in self._textureManager._textures):
             # Load the image
             self._textureManager.registerTexture(image.filepath, image.tag, image.label)
+
+    def _removeImageFromCache(self, tag: Union[int, str]):
+        """
+        Removes the image with the given tag from the texture cache if it exists.
+
+        tag: The tag of the image to remove.
+        """
+        # Check if the texture manager is ready
+        if self._textureManager is None:
+            raise ValueError("Texture Manager is not ready for input.")
+
+        # Check if the image is in the cache
+        if (tag in self._textureManager._textures):
+            # Remove the image
+            self._textureManager.removeTexture(tag)
 
     def presentImage(self, tags: Union[list[Union[int, str]], tuple[Union[int, str], ...], Union[int, str]]):
         """

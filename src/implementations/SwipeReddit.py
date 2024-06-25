@@ -5,7 +5,6 @@
 import os
 import tempfile
 import argparse
-from time import time
 from enum import Enum
 from typing import Union, Optional, Any
 
@@ -201,7 +200,7 @@ class SwipeReddit(SwiperImplementation):
             print(f"Collected {len(imgPaths)} image paths: {imgPaths}")
 
         # Add the images to the queue
-        self.core.addImagesToQueue([TextureModel(path, f"{os.path.basename(path).replace('.', '_')}_{int(time())}") for path in imgPaths])
+        self.core.addImagesToQueue([TextureModel(path, label=os.path.basename(path)) for path in imgPaths])
 
         # Get the current image
         if self.core._queueStarted:

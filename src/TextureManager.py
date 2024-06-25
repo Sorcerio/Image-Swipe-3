@@ -84,7 +84,20 @@ class TextureManager:
         self._textures.append(tag)
         self._sizes[tag] = (width, height)
 
-    # TODO: removeTexture
+    def removeTexture(self, tag: Union[int, str]):
+        """
+        Removes the texture from the texture registry.
+
+        tag: The tag of the texture to remove.
+        """
+        # Make sure it exists
+        if dpg.does_item_exist(tag):
+            # Remove it
+            dpg.delete_item(tag)
+
+            # Remove from records
+            self._textures.remove(tag)
+            self._sizes.pop(tag)
 
     def dumpTextures(self):
         """
