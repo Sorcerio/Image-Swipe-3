@@ -5,6 +5,7 @@
 import os
 import tempfile
 import argparse
+from time import time
 from enum import Enum
 from typing import Union, Optional, Any
 
@@ -172,7 +173,7 @@ class SwipeReddit(SwiperImplementation):
             print(f"Collected {len(imgPaths)} image paths: {imgPaths}")
 
         # Add to the queue
-        self.core.addImagesToQueue([TextureModel(path, os.path.basename(path).replace(".", "_")) for path in imgPaths])
+        self.core.addImagesToQueue([TextureModel(path, f"{os.path.basename(path).replace('.', '_')}_{time()}")for path in imgPaths])
 
         # Get the current image
         if self.core._queueStarted:
@@ -198,7 +199,21 @@ class SwipeReddit(SwiperImplementation):
             # Check for post type
             if ("is_gallery" in postData) and postData["is_gallery"]:
                 # Multiple images
-                imgUrls = [self.previewUrlToFullUrl(item["s"]["u"]) for item in postData["media_metadata"].values()]
+                # Collect the image urls
+                imgUrls = []
+                for item in postData["media_metadata"].values():
+                    # Check the type of image
+                    if "gif" in item["m"]:
+                        # Gif image
+                        imgUrl = self.previewUrlToFullUrl(item["s"]["gif"])
+                    else:
+                        # Normal image
+                        imgUrl = self.previewUrlToFullUrl(item["s"]["u"])
+
+                    # Record the url
+                    imgUrls.append(imgUrl)
+
+                # Download the images
                 imgUrls = {url.split("/")[-1]: url for url in imgUrls}
                 paths.extend(self.downloadImages(imgUrls))
 
