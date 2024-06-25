@@ -12,7 +12,7 @@ from typing import Union, Optional, Any
 import dearpygui.dearpygui as dpg
 
 from .SwiperImplementation import SwiperImplementation
-from ..ImageSwipeShared import fullpath, createLoadingModal
+from ..ImageSwipeShared import fullpath, createLoadingModal, createAlertModal
 from ..ImageSwipeCore import ImageSwipeCore
 from ..QuickRequests import QuickRequests
 from ..TextureModel import TextureModel
@@ -46,6 +46,7 @@ class SwipeReddit(SwiperImplementation):
     CLI_DESC = "Browse images from a subreddit."
 
     BASE_URL = "https://www.reddit.com"
+    MAX_PAGE_RETRY_COUNT = 7
 
     SIZE_SETUP = (404, 594)
 
@@ -151,29 +152,55 @@ class SwipeReddit(SwiperImplementation):
         # Create the loading modal
         loaderTag = createLoadingModal("Fetching Content", f"Collecting the next {self.perPageLimit} posts...")
 
-        # Request the page data
-        reqEndpoint = self.toRedditEndpoint(self.subreddit, self.source, self.timeframe, afterId=afterPost, limit=self.perPageLimit)
+        imgPaths = None
+        attemptCount = 0
+        while (imgPaths is None) or (len(imgPaths) == 0):
+            # Request the page data
+            reqEndpoint = self.toRedditEndpoint(self.subreddit, self.source, self.timeframe, afterId=afterPost, limit=self.perPageLimit)
 
-        if self.debug:
-            print(f"Requesting endpoint: {reqEndpoint}")
+            if self.debug:
+                print(f"Requesting endpoint: {reqEndpoint}")
 
-        resp = self._urlRequester.apiGet(reqEndpoint)
+            resp = self._urlRequester.apiGet(reqEndpoint)
 
-        # Get the data
-        respData = resp.json()
+            # Get the data
+            respData = resp.json()
 
-        # Get the last post id
-        self.__lastPostId = respData["data"]["after"]
+            # Get the last post id
+            self.__lastPostId = respData["data"]["after"]
+            afterPost = self.__lastPostId
 
-        # Download the posts
-        imgPaths = self.processPosts(respData["data"]["children"])
+            # Download the posts
+            imgPaths = self.processPosts(respData["data"]["children"])
+
+            # Iterate the attempt count
+            attemptCount += 1
+
+            # Check if the attempt count is too high
+            if attemptCount >= self.MAX_PAGE_RETRY_COUNT:
+                # Alert the user
+                print(f"Failed to fetch any images from posts after {self.MAX_PAGE_RETRY_COUNT} attempts.")
+
+                # Close the loading modal
+                dpg.delete_item(loaderTag)
+
+                # Show an error alert
+                createAlertModal(
+                    "Failed to Fetch Images",
+                    f"No images could be collected from the {self.MAX_PAGE_RETRY_COUNT * self.perPageLimit} checked posts.",
+                    buttonText="Quit",
+                    onPress=(lambda : dpg.stop_dearpygui())
+                )
+
+                # Exit
+                return
 
         # Debug
         if self.debug:
             print(f"Collected {len(imgPaths)} image paths: {imgPaths}")
 
-        # Add to the queue
-        self.core.addImagesToQueue([TextureModel(path, f"{os.path.basename(path).replace('.', '_')}_{time()}")for path in imgPaths])
+        # Add the images to the queue
+        self.core.addImagesToQueue([TextureModel(path, f"{os.path.basename(path).replace('.', '_')}_{time()}") for path in imgPaths])
 
         # Get the current image
         if self.core._queueStarted:
