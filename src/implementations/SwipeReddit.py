@@ -56,6 +56,7 @@ class SwipeReddit(SwiperImplementation):
         subreddit: Optional[str] = None,
         source: Optional[PostSource] = None,
         timeframe: Optional[PostTimeframe] = None,
+        perPageLimit: int = 3, # TODO: Set to 25?
         debug: bool = False
     ):
         """
@@ -63,6 +64,7 @@ class SwipeReddit(SwiperImplementation):
         subreddit: The subreddit to prefill into the intial startup form.
         source: The `PostSource` to prefill into the initial startup form.
         timeframe: The `PostTimeframe` to prefill into the initial startup form.
+        perPageLimit: The maximum number of items to fetch per page.
         debug: If `True`, debug features will be enabled.
         """
         # Record info
@@ -70,6 +72,18 @@ class SwipeReddit(SwiperImplementation):
         self.subreddit: Optional[str] = subreddit
         self.source: Optional[PostSource] = source
         self.timeframe: Optional[PostTimeframe] = timeframe
+
+        self.__lastPostId = None
+
+        # Validate per page limit
+        if perPageLimit < 1:
+            print("Per Page Item Limit cannot be <1. Setting per page limit to 1.")
+            self.perPageLimit = 1
+        elif perPageLimit > 100:
+            print("Per Page Item Limit cannot be >100. Setting per page limit to 100.")
+            self.perPageLimit = 100
+        else:
+            self.perPageLimit = perPageLimit
 
         # Prepare the core
         self.core = ImageSwipeCore(
@@ -84,6 +98,15 @@ class SwipeReddit(SwiperImplementation):
         """
         # Display the core
         self.core.display(onFirstFrame=self.__onFirstFrame)
+
+    def fetchPage(self, afterPost: Optional[str] = None):
+        """
+        Fetches the given page of posts.
+
+        afterPost: A post ID to fetch posts after.
+        """
+        # TODO: Fetch the page of posts, sort for ones with an image (or gallery), cache locally, and add to queue
+        print(self.toRedditUrl(self.subreddit, self.source, self.timeframe, limit=self.perPageLimit))
 
     # Class Functions
     @classmethod
@@ -160,6 +183,34 @@ class SwipeReddit(SwiperImplementation):
             return errors
         else:
             return None
+
+    @staticmethod
+    def toRedditUrl(
+        subreddit: str,
+        source: PostSource,
+        timeframe: PostTimeframe,
+        afterId: Optional[str] = None,
+        limit: int = 25,
+    ) -> str:
+        """
+        Produces a request URL for the given information.
+
+        subreddit: The subreddit to request from including `r/`.
+        source: The `PostSource` source to request from.
+        timeframe: The `PostTimeframe` timeframe to request from.
+        afterId: The ID of the post to request after for pagination. If `None`, pagination will start from the most recent post in the `timeframe`.
+        limit: The maximum number of posts to return.
+
+        Returns the request URL.
+        """
+        # Build the root url
+        url = f"https://www.reddit.com/{subreddit}/{source.value}.json?t={timeframe.value}&count={limit}"
+
+        # Check if an after ID is provided
+        if afterId is not None:
+            url += f"&after={afterId}"
+
+        return url
 
     # Private Functions
     def __onFirstFrame(self):
@@ -253,7 +304,8 @@ class SwipeReddit(SwiperImplementation):
         self.source = source
         self.timeframe = timeframe
 
-        # TODO: Load first page of posts with images
+        # Fetch the first page
+        self.fetchPage()
 
 # Command Line
 if __name__ == "__main__":
