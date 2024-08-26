@@ -114,12 +114,15 @@ class SwipeLocalMulti(SwipeLocal):
         # Get the current image
         curIndex, curImg = tuple(self.core.getPresentedImages().items())[btnIndex]
 
-        # Save the selected image
-        self.core.saveCurrentImage(os.path.join(
-            self.core.outputDir,
-            dirName,
-            os.path.basename(curImg.filepath)
-        ))
+        # Save the current image
+        self.core.saveImageAtIndex(
+            curIndex,
+            os.path.join(
+                self.core.outputDir,
+                dirName,
+                os.path.basename(curImg.filepath)
+            )
+        )
 
         # Show the next image
         self.core.showNextImage()
