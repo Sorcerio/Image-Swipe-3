@@ -4,7 +4,10 @@
 # Imports
 import os
 from typing import Union, Optional
+
 import dearpygui.dearpygui as dpg
+import numpy as np
+from PIL import Image
 
 from .ImageSwipeShared import ASSETS_DIR, fullpath
 
@@ -18,6 +21,8 @@ class TextureManager:
 
     _TAG_TEXTURE_REGISTRY = "textureRegistry"
     _TAG_IMAGE_ERROR = "errorImage"
+
+    MAX_TEXTURE_SIZE = (1080, 1080)
 
     # Constructor
     def __init__(self):
@@ -49,13 +54,19 @@ class TextureManager:
         # Show the texture registry
         dpg.configure_item(self._TAG_TEXTURE_REGISTRY, show=True)
 
-    def registerTexture(self, path: str, tag: Union[int, str], label: Optional[str] = None):
+    def registerTexture(self,
+        path: str,
+        tag: Union[int, str],
+        label: Optional[str] = None,
+        maxRez: Optional[tuple[int, int]] = MAX_TEXTURE_SIZE
+    ):
         """
         Registers the given image with the texture register as a static texture.
 
         path: The path to the image. If `path` does not exist, the error image will be used instead for the given `tag`.
         tag: The tag that will be used to reference the image later.
         label: A text label to associate with the image. If not provided, the `tag` will be used.
+        maxRez: The maximum resolution the image can be like `(width, height)`. If `None` is provided, the image will be loaded at its original resolution.
         """
         # Check if the image exists
         if not os.path.exists(path):
@@ -69,7 +80,12 @@ class TextureManager:
             return
 
         # Load the image
-        width, height, channels, data = dpg.load_image(path)
+        if maxRez is not None:
+            # Load with max size
+            width, height, channels, data = self._loadImageWithMaxSize(path, maxRez)
+        else:
+            # Load normally
+            width, height, channels, data = dpg.load_image(path)
 
         # Add to the texture registry
         if not dpg.does_item_exist(self._TAG_TEXTURE_REGISTRY):
@@ -107,6 +123,31 @@ class TextureManager:
         if dpg.does_item_exist(self._TAG_TEXTURE_REGISTRY):
             # Rip
             dpg.delete_item(self._TAG_TEXTURE_REGISTRY)
+
+    # Private Functions
+    def _loadImageWithMaxSize(self, path: str, maxSize: tuple[int, int]) -> tuple[int, int, int, bytes]:
+        """
+        Loads an image for use in DearPyGui constrained within the given `maxSize`.
+
+        path: A path to the image file.
+        maxSize: The maximum size the image can be like `(width, height)`.
+
+        Returns the width, height, channels, and data of the image in a format suitable for use with DearPyGui.
+        """
+        # Load the image
+        with Image.open(path).convert("RGBA") as pilImage:
+            # Calculate the best fit size
+            bestFitSize, _ = self.calcBestFitSize(pilImage.size, maxSize, True)
+
+            # Resize the image
+            with pilImage.resize(bestFitSize, Image.Resampling.LANCZOS) as resizedImage:
+                newSize = resizedImage.size
+                return (
+                    newSize[0],
+                    newSize[1],
+                    4, # RGBA
+                    (np.array(resizedImage).flatten() / 255.0) # Flatten and normalize the image
+                )
 
     # Static Functions
     @staticmethod
