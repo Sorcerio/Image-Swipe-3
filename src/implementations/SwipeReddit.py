@@ -538,7 +538,7 @@ class SwipeReddit(SwiperImplementation):
         else:
             # Show the complete alert
             print("No more posts to fetch.")
-            self.core._createQueueCompleteAlert()
+            self.core.createQueueCompleteAlert()
 
 # Command Line
 if __name__ == "__main__":

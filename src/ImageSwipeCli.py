@@ -12,10 +12,11 @@ class ImageSwipeCli:
     Unified Command Line interface for Image Swipe 3.
     """
     # Constants
-    IMPLEMENTATIONS = [ # TODO: Audtomate populating this list
+    IMPLEMENTATIONS = [ # TODO: Automate populating this list
         SwipeLocal,
         SwipeLocalMulti,
-        SwipeReddit
+        SwipeReddit,
+        SwipePickN
     ]
 
     # Functions

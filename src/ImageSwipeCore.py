@@ -225,6 +225,15 @@ class ImageSwipeCore:
         # Add to list
         self._images.extend(images)
 
+    def setImageQueue(self, images: Iterable[TextureModel]):
+        """
+        Directly sets the queue of images for presentation overwriting any existing queue.
+
+        images: An iterable of `TextureModel` objects to set as the queue.
+        """
+        # Set it
+        self._images = list(images)
+
     def startQueue(self):
         """
         Presents the first image in the queue.
@@ -552,7 +561,7 @@ class ImageSwipeCore:
         if btn.callback is not None:
             btn.callback(btn.userData)
 
-    def _createQueueCompleteAlert(self):
+    def createQueueCompleteAlert(self):
         """
         Creates the alert indicating that the queue is complete.
         """
@@ -577,7 +586,7 @@ class ImageSwipeCore:
             self.onQueueComplete()
         else:
             # Create the queue complete alert
-            self._createQueueCompleteAlert()
+            self.createQueueCompleteAlert()
 
     # Callbacks
     def __viewportResizedCallback(self, sender: Union[int, str], size: tuple[int, int, int, int]):
