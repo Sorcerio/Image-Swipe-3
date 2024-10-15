@@ -6,7 +6,7 @@ import os
 import argparse
 
 from .SwipeLocal import SwipeLocal
-from ..ImageSwipeShared import VALID_IMAGE_EXTS, fullpath
+from ..ImageSwipeShared import VALID_IMAGE_EXTS, corePaths
 from ..ImageSwipeCore import ImageSwipeCore
 from ..ActionButtonModel import ActionButtonModel, RejectButtonModel
 
@@ -40,8 +40,8 @@ class SwipeLocalMulti(SwipeLocal):
         self.extensions = extensions
         self.debug = debug
 
-        # Get full paths
-        self.rootDir = fullpath(rootDir)
+        # Get the paths
+        outputDir, self.rootDir = corePaths(outputDir, rootDir)
 
         # Prepare buttons
         buttons: list[ActionButtonModel] = []
@@ -58,7 +58,7 @@ class SwipeLocalMulti(SwipeLocal):
 
         # Prepare the core
         self.core = ImageSwipeCore(
-            fullpath(outputDir),
+            outputDir,
             buttons=buttons,
             hotkeys=None,
             preloadBuffer=round(3 * imagesPer),

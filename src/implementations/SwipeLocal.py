@@ -8,7 +8,7 @@ from typing import Union, Any
 import dearpygui.dearpygui as dpg
 
 from .SwiperImplementation import SwiperImplementation
-from ..ImageSwipeShared import VALID_IMAGE_EXTS, fullpath, loadImagesFromDir
+from ..ImageSwipeShared import VALID_IMAGE_EXTS, fullpath, loadImagesFromDir, corePaths
 from ..ImageSwipeCore import ImageSwipeCore
 
 # Classes
@@ -39,13 +39,8 @@ class SwipeLocal(SwiperImplementation):
         self.extensions = extensions
         self.debug = debug
 
-        # Get full paths
-        outputDir = fullpath(outputDir)
-
-        if (rootDir is None) or (rootDir.strip() == ""): # TODO: Standardize this use case
-            self.rootDir = outputDir
-        else:
-            self.rootDir = fullpath(rootDir)
+        # Get the paths
+        outputDir, self.rootDir = corePaths(outputDir, rootDir)
 
         # Prepare the core
         self.core = ImageSwipeCore(

@@ -244,6 +244,27 @@ def loadImagesFromDir(d: str, debug: bool = False) -> list[TextureModel]:
 
     return images
 
+def corePaths(outputDir: str, rootDir: str) -> tuple[str, str]:
+    """
+    Gets the absolute paths for the output and root directories.
+    If no root directory is provided, the output directory will be used as the root.
+
+    outputDir: The output directory.
+    rootDir: The root directory, `None`, or an empty string.
+
+    Returns a tuple of the absolute paths to the output and root directories.
+    """
+    # Get the full output path
+    outputDir = fullpath(outputDir)
+
+    # Get a valid root path
+    if (rootDir is None) or (rootDir.strip() == ""):
+        rootDir = outputDir
+    else:
+        rootDir = fullpath(rootDir)
+
+    return (outputDir, rootDir)
+
 # Command Line
 if __name__ == "__main__":
     print("This file does not contain a command line interface.")
