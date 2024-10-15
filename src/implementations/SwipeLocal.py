@@ -40,11 +40,16 @@ class SwipeLocal(SwiperImplementation):
         self.debug = debug
 
         # Get full paths
-        self.rootDir = fullpath(rootDir)
+        outputDir = fullpath(outputDir)
+
+        if (rootDir is None) or (rootDir.strip() == ""): # TODO: Standardize this use case
+            self.rootDir = outputDir
+        else:
+            self.rootDir = fullpath(rootDir)
 
         # Prepare the core
         self.core = ImageSwipeCore(
-            fullpath(outputDir),
+            outputDir,
             debug=debug
         )
 
