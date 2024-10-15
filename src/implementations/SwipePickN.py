@@ -4,8 +4,7 @@
 # Imports
 import os
 import argparse
-from typing import Union, Any
-import dearpygui.dearpygui as dpg
+import random
 
 from .SwipeLocal import SwipeLocal
 from ..ImageSwipeShared import VALID_IMAGE_EXTS, corePaths
@@ -180,6 +179,9 @@ class SwipePickN(SwipeLocal):
 
                     # Keep it in the queue
                     keptImages.append(imgTex)
+
+            # Shuffle the kept images
+            random.shuffle(keptImages)
 
             # Reset the kept tags tracker
             self._keptTags = []
