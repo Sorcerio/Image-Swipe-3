@@ -14,7 +14,7 @@ class PercentageLayout:
     Helper class for managing percentage based layouts in DearPyGui.
 
     Usage:
-    ```Python
+    ```python
     layout = PercentageLayout()
     layout.addItem(dpg.add_button(label="50%"), 50)
     layout.addItem(dpg.add_button(label="50%"), 50)

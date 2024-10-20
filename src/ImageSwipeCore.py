@@ -596,7 +596,8 @@ class ImageSwipeCore:
         sender: The tag of the viewport.
         size: The new size of the viewport as a tuple like `(width, height, client width, client height)`.
         """
-        # TODO: if viewport is resized, present the current images again so they fit
+        if self._queueStarted:
+            self.presentCurrentImage()
 
     def __toolbarQuitCallback(self, sender: Union[int, str]):
         """
