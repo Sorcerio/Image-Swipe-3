@@ -27,11 +27,7 @@ class ImageSwipeCli:
         self._options: Optional[argparse.Namespace] = None
 
         # Collect implementations
-        self.imps: list[imps.SwiperImplementation] = []
-        for name in dir(imps):
-            obj = getattr(imps, name)
-            if isinstance(obj, type) and issubclass(obj, imps.SwiperImplementation) and (obj != imps.SwiperImplementation):
-                self.imps.append(obj)
+        self.imps: list[imps.SwiperImplementation] = self.getImpsFromModule(imps)
 
         # Add additional implementations
         if addImps:
@@ -39,6 +35,23 @@ class ImageSwipeCli:
 
         # Alphabetize
         self.imps.sort(key=lambda imp: imp.CLI_PROG)
+
+    # Static Functions
+    @staticmethod
+    def getImpsFromModule(module) -> list[imps.SwiperImplementation]:
+        """
+        Gets the implementations from a Python module.
+
+        module: The module to search for Image Swipe 3 implementations within using `dir()`.
+        """
+        # Collect implementations
+        impList = []
+        for name in dir(module):
+            obj = getattr(module, name)
+            if isinstance(obj, type) and issubclass(obj, imps.SwiperImplementation) and (obj != imps.SwiperImplementation):
+                impList.append(obj)
+
+        return impList
 
     # Functions
     def start(self):
@@ -49,7 +62,11 @@ class ImageSwipeCli:
         self._parser = argparse.ArgumentParser(prog="Image Swipe 3", description="A tool for rapid sorting of images from static and dynamic sources.")
 
         # Setup subparsers
-        self._subparsers = self._parser.add_subparsers(dest="command", title="progs")
+        self._subparsers = self._parser.add_subparsers(
+            dest="command",
+            title="progs",
+            help="Select the type of implementation to use."
+        )
 
         # Setup the implementations
         self.__buildSubparsers()
