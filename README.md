@@ -17,10 +17,13 @@
 
 ---
 
-
 ## What is It?
 
 A GUI tool for rapid sorting of images from local and networked sources.
+
+If you're someone that works with large sets of images like a photographer, archivist, or otherwise, this tool provides the functionality to sort, categorize, and manage through a simple graphical interface.
+Both local and networked systems are supported [out of the box](#built-in-implementations).
+For any specific endpoints not officially supported, [addons](#addon-implementations) can be made for any unique use case.
 
 See [Built-In Implementations](#built-in-implementations) for a list of currently implemented functionality.
 Additional functionality can be added through [addons](#addon-implementations).
@@ -60,10 +63,12 @@ To set up the project, follow these steps:
 
 ### Built-In Implementations
 
-* `local`: Utility for choosing between keeping, favoriting, or discarding any number of local images.
-* `localmulti`: Utility for choosing between two or more images or discarding them all for any number of local images.
-* `pickn`: Utility for choosing any number of images from a set of local images in repeating rounds until only the desired number, or less, of images remain.
-* `reddit`: Proof of concept for navigating the images any subreddit allowing you to download or discard each in a sequential process.
+| Command | Description |
+|---|---|
+| `local` | Utility for choosing between keeping, favoriting, or discarding any number of local images. |
+| `localmulti` | Utility for choosing between two or more images or discarding them all for any number of local images. |
+| `pickn` | Utility for choosing any number of images from a set of local images in repeating rounds until only the desired number, or less, of images remain. |
+| `reddit` | Proof of concept for viewing the images of any subreddit while allowing you to download or discard each in a sequential process. |
 
 ### Addon Implementations
 
