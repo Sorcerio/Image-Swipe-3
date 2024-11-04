@@ -6,6 +6,8 @@ import os
 import argparse
 import random
 
+import dearpygui.dearpygui as dpg
+
 from .SwipeLocal import SwipeLocal
 from ..ImageSwipeShared import VALID_IMAGE_EXTS, corePaths
 from ..ImageSwipeCore import ImageSwipeCore
@@ -64,6 +66,7 @@ class SwipePickN(SwipeLocal):
             buttons=buttons,
             hotkeys=None,
             onQueueComplete=self.__queueCompleteCallback,
+            toolbarFileMenuHook=self.__fileMenuOptions,
             debug=debug
         )
 
@@ -146,26 +149,7 @@ class SwipePickN(SwipeLocal):
         # Check the number of kept images
         if len(self._keptTags) <= self._keepCount:
             # All rounds complete
-            # Save the kept images
-            for i, imgTex in enumerate(self.core._images):
-                # Check if kept
-                if imgTex.tag in self._keptTags:
-                    # Report
-                    if self.debug:
-                        print(f"Saving image Tag {imgTex.tag}")
-
-                    # Save the image
-                    self.core.saveImageAtIndex(
-                        i,
-                        os.path.join(
-                            self.core.outputDir,
-                            self.KEEP_DIR,
-                            os.path.basename(imgTex.filepath)
-                        )
-                    )
-
-            # Show queue complete alert
-            self.core.createQueueCompleteAlert()
+            self.__finalizeSelection()
         else:
             # Go for another round
             # Remove the unkept images from queue
@@ -191,6 +175,58 @@ class SwipePickN(SwipeLocal):
 
             # Start queue again
             self.core.startQueue()
+
+    def __finalizeSelection(self):
+        """
+        Saves the current queue to disk and ends the program.
+        """
+        # Save the kept images
+        for i, imgTex in enumerate(self.core._images):
+            # Check if kept
+            if imgTex.tag in self._keptTags:
+                # Report
+                if self.debug:
+                    print(f"Saving image Tag {imgTex.tag}")
+
+                # Save the image
+                self.core.saveImageAtIndex(
+                    i,
+                    os.path.join(
+                        self.core.outputDir,
+                        self.KEEP_DIR,
+                        os.path.basename(imgTex.filepath)
+                    )
+                )
+
+        # Report
+        if self.debug:
+            print(f"Saved {len(self._keptTags)} of {self._keepCount} images.")
+
+        # Show queue complete alert
+        self.core.createQueueCompleteAlert()
+
+    def __keepRestOfQueue(self):
+        """
+        Keeps all the images from the current image to the end of the queue as well as any in the current keep list.
+        """
+        # Record the current image and all subsequent
+        for imgTex in self.core._images[self.core._curImageIndex:]:
+            self._keptTags.append(imgTex.tag)
+
+        # Remove duplicates
+        self._keptTags = list(set(self._keptTags))
+
+        # Report
+        if self.debug:
+            print(f"Keeping items in queue: {self._keptTags}")
+
+        # Finalize
+        self.__finalizeSelection()
+
+    def __fileMenuOptions(self):
+        asIs = dpg.add_menu_item(label="Accept As Is", callback=self.__keepRestOfQueue)
+        with dpg.tooltip(asIs):
+            dpg.add_text("Accept all images currently in the queue regardless of the keep count.")
 
 # Command Line
 if __name__ == "__main__":

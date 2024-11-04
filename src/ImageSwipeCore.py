@@ -40,6 +40,7 @@ class ImageSwipeCore:
         imgPerDisplay: int = 1,
         iterPerAction: int = 1,
         onQueueComplete: Optional[Callable[[None], None]] = None,
+        toolbarFileMenuHook: Optional[dict[str, Callable[[None], None]]] = None,
         debug: bool = False
     ):
         """
@@ -49,7 +50,9 @@ class ImageSwipeCore:
         preloadBuffer: The number of images to preload around the current image.
         imgPerDisplay: The number of images to display at once.
         iterPerAction: The amount that the image index should be incremented by for each action.
+        onQueueStart: A function to call when the queue is started.
         onQueueComplete: A function to call when the queue is complete. If `None`, a default alert will be shown.
+        toolbarFileMenuHook: A function that's called when the `File` menu is created in the interface. This function should define additional `dpg.add_menu_item(...)` items to add to the menu.
         debug: If `True`, debug features will be enabled.
         """
         # Assign data
@@ -57,6 +60,7 @@ class ImageSwipeCore:
         self.outputDir = fullpath(outputDir)
         self.preloadBuffer = preloadBuffer
         self.onQueueComplete = onQueueComplete
+        self.toolbarFileMenuHook = toolbarFileMenuHook
 
         self._queueStarted = False
 
@@ -93,7 +97,7 @@ class ImageSwipeCore:
                 print("Using provided buttons.")
 
         # Setup image list
-        self.__curImageIndex = 0
+        self._curImageIndex = 0
         self._images: list[TextureModel] = []
 
         # Setup flags
@@ -239,7 +243,7 @@ class ImageSwipeCore:
         Presents the first image in the queue.
         """
         # Set to the first image
-        self.__curImageIndex = 0
+        self._curImageIndex = 0
 
         # Update the texture cache
         self._updateTextureCache()
@@ -258,6 +262,15 @@ class ImageSwipeCore:
         # Add top menu bar
         with dpg.viewport_menu_bar(parent=self._TAG_WINDOW_MAIN):
             with dpg.menu(label="File"):
+                # Check if additional items are provided
+                if self.toolbarFileMenuHook is not None:
+                    # Call the hook
+                    self.toolbarFileMenuHook()
+
+                    # Add a separator
+                    dpg.add_separator()
+
+                # Add the default items
                 dpg.add_menu_item(label="Quit", callback=self.__toolbarQuitCallback)
 
             with dpg.menu(label="View"):
@@ -335,20 +348,20 @@ class ImageSwipeCore:
         queueLength = len(self._images)
 
         # Load the current image
-        if (self.__curImageIndex < queueLength):
-            self._loadImageToCache(self._images[self.__curImageIndex])
+        if (self._curImageIndex < queueLength):
+            self._loadImageToCache(self._images[self._curImageIndex])
 
         # Load images for buffer length in both directions
         firstLoadedIndex = None
         for i in range(1, self.preloadBuffer + 1):
             # Forward
-            if ((self.__curImageIndex + i) < queueLength):
-                self._loadImageToCache(self._images[self.__curImageIndex + i])
+            if ((self._curImageIndex + i) < queueLength):
+                self._loadImageToCache(self._images[self._curImageIndex + i])
 
             # Backward
-            if ((self.__curImageIndex - i) >= 0):
-                firstLoadedIndex = (self.__curImageIndex - i)
-                self._loadImageToCache(self._images[self.__curImageIndex - i])
+            if ((self._curImageIndex - i) >= 0):
+                firstLoadedIndex = (self._curImageIndex - i)
+                self._loadImageToCache(self._images[self._curImageIndex - i])
 
         # Check if there are unloadable textures
         if (firstLoadedIndex is not None) and (firstLoadedIndex > 0):
@@ -447,7 +460,7 @@ class ImageSwipeCore:
         """
         # Look through active range
         imgs = {}
-        for i in range(self.__curImageIndex, (self.__curImageIndex + self.imgPerDisplay)):
+        for i in range(self._curImageIndex, (self._curImageIndex + self.imgPerDisplay)):
             # Check if out of range
             if i >= len(self._images):
                 break
@@ -462,7 +475,7 @@ class ImageSwipeCore:
         Presents the current image and handles display of multiple images if applicable.
         """
         # Check if tags are present
-        tags = tuple(img.tag for img in self._images[self.__curImageIndex:self.__curImageIndex + self.imgPerDisplay])
+        tags = tuple(img.tag for img in self._images[self._curImageIndex:self._curImageIndex + self.imgPerDisplay])
         if tags:
             # Present the images
             self.presentImage(tags)
@@ -475,13 +488,13 @@ class ImageSwipeCore:
         Shows the next image in the queue.
         """
         # Check that there is a next image
-        if ((self.__curImageIndex + self.iterPerAction) > len(self._images)):
+        if ((self._curImageIndex + self.iterPerAction) > len(self._images)):
             # No next image
             self._triggerQueueComplete()
             return
 
         # Increment the index
-        self.__curImageIndex += self.iterPerAction
+        self._curImageIndex += self.iterPerAction
 
         # Update the texture cache
         self._updateTextureCache()
@@ -490,19 +503,19 @@ class ImageSwipeCore:
         self.presentCurrentImage()
 
         # Update the queue window
-        self._queueWindow.update(self.__curImageIndex, self._images)
+        self._queueWindow.update(self._curImageIndex, self._images)
 
     def showPrevImage(self):
         """
         Shows the previous image in the queue.
         """
         # Check that there is a previous image
-        if ((self.__curImageIndex - self.iterPerAction) < 0):
+        if ((self._curImageIndex - self.iterPerAction) < 0):
             # No previous image
             return
 
         # Reduce the index
-        self.__curImageIndex -= self.iterPerAction
+        self._curImageIndex -= self.iterPerAction
 
         # Update the texture cache
         self._updateTextureCache()
@@ -511,7 +524,7 @@ class ImageSwipeCore:
         self.presentCurrentImage()
 
         # Update the queue window
-        self._queueWindow.update(self.__curImageIndex, self._images)
+        self._queueWindow.update(self._curImageIndex, self._images)
 
     def saveCurrentImage(self, toPath: str):
         """
@@ -519,7 +532,7 @@ class ImageSwipeCore:
 
         toPath: The path to save the image to.
         """
-        self.saveImageAtIndex(self.__curImageIndex, toPath)
+        self.saveImageAtIndex(self._curImageIndex, toPath)
 
     def saveImageAtIndex(self, index: int, toPath: str):
         """
@@ -553,7 +566,7 @@ class ImageSwipeCore:
             self.saveCurrentImage(os.path.join(
                 self.outputDir,
                 btn.dirName,
-                os.path.basename(self._images[self.__curImageIndex].filepath)
+                os.path.basename(self._images[self._curImageIndex].filepath)
             ))
             self.showNextImage()
 
@@ -620,7 +633,7 @@ class ImageSwipeCore:
 
         sender: The tag of the sender.
         """
-        self._queueWindow.display(self.__curImageIndex, self._images)
+        self._queueWindow.display(self._curImageIndex, self._images)
 
     def __controlButtonCallback(self, sender: Union[int, str], v: Any, btn: ActionButtonModel):
         """
