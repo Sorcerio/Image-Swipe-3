@@ -34,7 +34,7 @@ To set up the project, follow these steps:
 
 1. **Clone the repository**:
     ```sh
-    git clone https://github.com/yourusername/your-repo.git
+    git clone git@github.com:Sorcerio/Image-Swipe-3.git
     cd your-repo
     ```
 2. **Create a virtual environment**:
@@ -42,11 +42,11 @@ To set up the project, follow these steps:
     python -m venv .venv --prompt IS3
     ```
 3. **Activate the virtual environment**:
-    - **Windows**:
+    * **Windows**:
         ```sh
         .venv\Scripts\activate
         ```
-    - **Linux/Mac**:
+    * **Linux/Mac**:
         ```sh
         source .venv/bin/activate
         ```
